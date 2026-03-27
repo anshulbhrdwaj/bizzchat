@@ -1,492 +1,321 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ─── USERS ───────────────────────────────────────────
-
 model User {
-  id                 String    @id @default(cuid())
-  phone              String    @unique
-  username           String?   @unique
-  name               String
-  about              String?   @default("Hey there! I am using NexChat.")
-  avatarUrl          String?
-  isOnline           Boolean   @default(false)
-  lastSeen           DateTime  @default(now())
-  isVerifiedBusiness Boolean   @default(false)
-  twoFactorEnabled   Boolean   @default(false)
-  twoFactorPin       String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  privacy           UserPrivacy?
-  businessProfile   BusinessProfile?
-
-  sentMessages      Message[]         @relation("SentMessages")
-  contacts          Contact[]         @relation("UserContacts")
-  contactOf         Contact[]         @relation("ContactOf")
-  groupMembers      GroupMember[]
-  sessions          Session[]
-  calls             CallParticipant[]
-  blockedUsers      Block[]           @relation("Blocker")
-  blockedBy         Block[]           @relation("Blocked")
-  starredMessages   StarredMessage[]
-  devices           Device[]
-  notifications     Notification[]
-  chatParticipants  ChatParticipant[]
+  id            String   @id @default(cuid())
+  phone         String   @unique
+  name          String?
+  avatarUrl     String?
+  isOnline      Boolean  @default(false)
+  lastSeen      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  refreshTokens RefreshToken[]
+  businessProfile BusinessProfile?
+  chatMembers   ChatMember[]
+  messages      Message[]
+  reactions     MessageReaction[]
+  carts         Cart[]
+  orders        Order[]
+  sharedCartsReceived SharedCart[]     @relation("SharedCartRecipient")
+  orderStatusChanges  OrderStatusHistory[]
 }
 
-model UserPrivacy {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lastSeen     Privacy @default(EVERYONE)
-  profilePhoto Privacy @default(EVERYONE)
-  about        Privacy @default(EVERYONE)
-  readReceipts Boolean @default(true)
-  onlineStatus Privacy @default(EVERYONE)
-  groupsAdd    Privacy @default(EVERYONE)
-}
-
-enum Privacy {
-  EVERYONE
-  CONTACTS
-  NOBODY
-}
-
-model Session {
+model RefreshToken {
   id        String   @id @default(cuid())
+  token     String   @unique
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  deviceId  String?
-  platform  String?
+  family    String
+  used      Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
 
-model Device {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceName String
-  platform   String
-  pushToken  String?
-  isActive   Boolean  @default(true)
-  lastActive DateTime @default(now())
-  createdAt  DateTime @default(now())
-}
-
-// ─── CONTACTS ────────────────────────────────────────
-
-model Contact {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation("UserContacts", fields: [userId], references: [id], onDelete: Cascade)
-  contactId  String
-  contact    User     @relation("ContactOf", fields: [contactId], references: [id], onDelete: Cascade)
-  nickname   String?
-  isFavorite Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  @@unique([userId, contactId])
-}
-
-model Block {
-  id        String   @id @default(cuid())
-  blockerId String
-  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
-  blockedId String
-  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([blockerId, blockedId])
-}
-
-// ─── CHATS ───────────────────────────────────────────
-
-model Chat {
-  id        String    @id @default(cuid())
-  type      ChatType  @default(DIRECT)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  participants   ChatParticipant[]
-  group          Group?
-  messages       Message[]
-  pinnedMessages PinnedMessage[]
-  labels         ChatLabel[]
-}
-
-enum ChatType {
-  DIRECT
-  GROUP
-  BROADCAST
-  CHANNEL
-}
-
-model ChatParticipant {
-  id               String    @id @default(cuid())
-  chatId           String
-  chat             Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  userId           String
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  wallpaper        String?
-  mutedUntil       DateTime?
-  archivedAt       DateTime?
-  lastReadAt       DateTime  @default(now())
-  disappearingTimer Int?
-  createdAt        DateTime  @default(now())
-
-  @@unique([chatId, userId])
-}
-
-// ─── GROUPS ──────────────────────────────────────────
-
-model Group {
-  id               String      @id @default(cuid())
-  chatId           String      @unique
-  chat             Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  name             String
-  description      String?
-  avatarUrl        String?
-  inviteLink       String?     @unique
-  inviteLinkExpiry DateTime?
-  slowModeSeconds  Int?
-  isRestricted     Boolean     @default(false)
-  maxMembers       Int         @default(1024)
-  createdById      String
-  createdAt        DateTime    @default(now())
-
-  members GroupMember[]
-}
-
-model GroupMember {
-  id          String    @id @default(cuid())
-  groupId     String
-  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        GroupRole @default(MEMBER)
-  permissions Json?
-  joinedAt    DateTime  @default(now())
-  addedById   String?
-
-  @@unique([groupId, userId])
-}
-
-enum GroupRole {
-  OWNER
-  ADMIN
-  MEMBER
-}
-
-// ─── MESSAGES ────────────────────────────────────────
-
-model Message {
-  id             String      @id @default(cuid())
-  chatId         String
-  chat           Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User        @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  type           MessageType @default(TEXT)
-  content        String?
-  mediaUrl       String?
-  mediaType      String?
-  mediaSize      Int?
-  mediaDuration  Int?
-  mediaThumbnail String?
-  mediaWidth     Int?
-  mediaHeight    Int?
-  fileName       String?
-  latitude       Float?
-  longitude      Float?
-  locationName   String?
-  isLiveLocation Boolean     @default(false)
-  expiresAt      DateTime?
-  isEdited       Boolean     @default(false)
-  editHistory    Json[]      @default([])
-  isDeleted      Boolean     @default(false)
-  deletedAt      DateTime?
-  deletedFor     String[]    @default([])
-  replyToId      String?
-  replyTo        Message?    @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies        Message[]   @relation("MessageReplies")
-  forwardedFromId String?
-  scheduledAt    DateTime?
-  sentAt         DateTime?
-  createdAt      DateTime    @default(now())
-
-  statuses        MessageStatus[]
-  reactions       Reaction[]
-  pinnedIn        PinnedMessage[]
-  starredBy       StarredMessage[]
-  interactiveData Json?
-}
-
-enum MessageType {
-  TEXT
-  IMAGE
-  VIDEO
-  AUDIO
-  VOICE
-  VIDEO_NOTE
-  DOCUMENT
-  STICKER
-  GIF
-  LOCATION
-  LIVE_LOCATION
-  CONTACT_CARD
-  SYSTEM
-  INTERACTIVE_BUTTONS
-  INTERACTIVE_LIST
-  TEMPLATE
-  PRODUCT
-  ORDER
-}
-
-model MessageStatus {
-  id        String         @id @default(cuid())
-  messageId String
-  message   Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId    String
-  status    DeliveryStatus @default(SENT)
-  updatedAt DateTime       @updatedAt
-
-  @@unique([messageId, userId])
-}
-
-enum DeliveryStatus {
-  SENDING
-  SENT
-  DELIVERED
-  READ
-  FAILED
-}
-
-model Reaction {
-  id        String   @id @default(cuid())
-  messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId    String
-  emoji     String
-  createdAt DateTime @default(now())
-
-  @@unique([messageId, userId, emoji])
-}
-
-model PinnedMessage {
-  id         String   @id @default(cuid())
-  chatId     String
-  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  messageId  String
-  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  pinnedById String
-  pinnedAt   DateTime @default(now())
-}
-
-model StarredMessage {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messageId String
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, messageId])
-}
-
-// ─── CALLS ───────────────────────────────────────────
-
-model Call {
-  id           String            @id @default(cuid())
-  type         CallType
-  status       CallStatus
-  chatId       String?
-  startedAt    DateTime          @default(now())
-  endedAt      DateTime?
-  duration     Int?
-  participants CallParticipant[]
-}
-
-enum CallType {
-  VOICE
-  VIDEO
-  GROUP_VOICE
-  GROUP_VIDEO
-}
-
-enum CallStatus {
-  RINGING
-  ONGOING
-  ENDED
-  MISSED
-  DECLINED
-}
-
-model CallParticipant {
-  id       String    @id @default(cuid())
-  callId   String
-  call     Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  joinedAt DateTime?
-  leftAt   DateTime?
-
-  @@unique([callId, userId])
-}
-
-// ─── BUSINESS ────────────────────────────────────────
-
 model BusinessProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessName String
-  category     String
-  description  String?
-  email        String?
-  website      String?
-  address      String?
-  latitude     Float?
-  longitude    Float?
-  workingHours Json?
-  greetingMsg  String?
-  awayMsg      String?
-  awaySchedule Json?
-  createdAt    DateTime @default(now())
-
-  products     Product[]
-  quickReplies QuickReply[]
-  labels       Label[]
-  templates    MessageTemplate[]
-  apiKeys      ApiKey[]
-  stats        BusinessStats[]
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  logoUrl     String?
+  coverUrl    String?
+  category    String?
+  description String?
+  address     String?
+  website     String?
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  collections CatalogCollection[]
+  orders      Order[]
+  sharedCarts SharedCart[]
 }
 
-model Product {
-  id           String          @id @default(cuid())
-  businessId   String
-  business     BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name         String
-  description  String?
-  price        Float?
-  currency     String          @default("INR")
-  imageUrl     String?
-  link         String?
-  isAvailable  Boolean         @default(true)
-  collectionId String?
-  collection   Collection?     @relation(fields: [collectionId], references: [id])
-  createdAt    DateTime        @default(now())
-}
-
-model Collection {
-  id         String    @id @default(cuid())
-  businessId String
-  name       String
-  imageUrl   String?
-  products   Product[]
-  createdAt  DateTime  @default(now())
-}
-
-model QuickReply {
-  id         String          @id @default(cuid())
-  businessId String
-  business   BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  shortcut   String
-  message    String
-  mediaUrl   String?
-  createdAt  DateTime        @default(now())
-
-  @@unique([businessId, shortcut])
-}
-
-model Label {
-  id         String          @id @default(cuid())
-  businessId String
-  business   BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name       String
-  color      String
-  createdAt  DateTime        @default(now())
-
-  chatLabels ChatLabel[]
-}
-
-model ChatLabel {
-  id         String   @id @default(cuid())
-  chatId     String
-  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  labelId    String
-  label      Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  assignedAt DateTime @default(now())
-
-  @@unique([chatId, labelId])
-}
-
-model MessageTemplate {
-  id         String          @id @default(cuid())
-  businessId String
-  business   BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name       String
-  category   String
-  language   String          @default("en")
-  body       String
-  header     String?
-  footer     String?
-  buttons    Json?
-  status     String          @default("APPROVED")
-  createdAt  DateTime        @default(now())
-}
-
-model ApiKey {
-  id          String          @id @default(cuid())
+model CatalogCollection {
+  id          String   @id @default(cuid())
   businessId  String
   business    BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name        String
-  keyHash     String          @unique
-  permissions String[]
-  lastUsed    DateTime?
-  createdAt   DateTime        @default(now())
-  expiresAt   DateTime?
+  description String?
+  coverUrl    String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  productCollections ProductCollection[]
 }
 
-model BusinessStats {
-  id                String          @id @default(cuid())
-  businessId        String
-  business          BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  date              DateTime
-  messagesSent      Int             @default(0)
-  messagesDelivered Int             @default(0)
-  messagesRead      Int             @default(0)
-  activeChats       Int             @default(0)
-  newContacts       Int             @default(0)
-  avgResponseTime   Float?
-
-  @@unique([businessId, date])
+model Product {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  basePrice   Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  images          ProductImage[]
+  variantGroups   VariantGroup[]
+  collections     ProductCollection[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  sharedCartItems SharedCartItem[]
 }
 
-// ─── NOTIFICATIONS ───────────────────────────────────
-
-model Notification {
+model ProductImage {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String
-  title     String
-  body      String
-  data      Json?
-  isRead    Boolean  @default(false)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 }
 
-// ─── OTP (dev + prod) ────────────────────────────────
+model ProductCollection {
+  productId    String
+  collectionId String
+  product      Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   CatalogCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  @@id([productId, collectionId])
+}
+
+model VariantGroup {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  values    VariantValue[]
+}
+
+model VariantValue {
+  id            String       @id @default(cuid())
+  groupId       String
+  group         VariantGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  label         String
+  priceOverride Decimal?     @db.Decimal(10, 2)
+  stock         Int          @default(0)
+  sku           String?
+  imageUrl      String?
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  sharedCartItems SharedCartItem[]
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId String
+  status     CartStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+  order      Order?
+  @@unique([userId, businessId, status])
+}
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+}
+
+model CartItem {
+  id        String        @id @default(cuid())
+  cartId    String
+  cart      Cart          @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product       @relation(fields: [productId], references: [id])
+  variantId String?
+  variant   VariantValue? @relation(fields: [variantId], references: [id])
+  quantity  Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  @@unique([cartId, productId, variantId])
+}
+
+model SharedCart {
+  id          String           @id @default(cuid())
+  businessId  String
+  business    BusinessProfile  @relation(fields: [businessId], references: [id])
+  recipientId String
+  recipient   User             @relation("SharedCartRecipient", fields: [recipientId], references: [id])
+  note        String?
+  expiresAt   DateTime?
+  status      SharedCartStatus @default(PENDING)
+  chatId      String?
+  messageId   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  items       SharedCartItem[]
+}
+enum SharedCartStatus {
+  PENDING
+  VIEWED
+  ADDED_TO_CART
+  ORDERED
+  EXPIRED
+}
+
+model SharedCartItem {
+  id           String      @id @default(cuid())
+  sharedCartId String
+  sharedCart   SharedCart  @relation(fields: [sharedCartId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product     @relation(fields: [productId], references: [id])
+  variantId    String?
+  variant      VariantValue? @relation(fields: [variantId], references: [id])
+  quantity     Int
+  note         String?
+  createdAt    DateTime    @default(now())
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  businessId      String
+  business        BusinessProfile @relation(fields: [businessId], references: [id])
+  cartId          String?     @unique
+  cart            Cart?       @relation(fields: [cartId], references: [id])
+  status          OrderStatus @default(PENDING)
+  subtotal        Decimal     @db.Decimal(10, 2)
+  total           Decimal     @db.Decimal(10, 2)
+  deliveryAddress String?
+  customerNote    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+}
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id           String        @id @default(cuid())
+  orderId      String
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product       @relation(fields: [productId], references: [id])
+  variantId    String?
+  variant      VariantValue? @relation(fields: [variantId], references: [id])
+  productName  String
+  variantLabel String?
+  unitPrice    Decimal       @db.Decimal(10, 2)
+  quantity     Int
+  lineTotal    Decimal       @db.Decimal(10, 2)
+  imageUrl     String?
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  changedBy String
+  changer   User        @relation(fields: [changedBy], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+model Chat {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  members   ChatMember[]
+  messages  Message[]
+}
+
+model ChatMember {
+  chatId   String
+  userId   String
+  chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+  lastRead DateTime @default(now())
+  @@id([chatId, userId])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  chatId      String
+  chat        Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User        @relation(fields: [senderId], references: [id])
+  type        MessageType @default(TEXT)
+  content     String?
+  metadata    Json?
+  replyToId   String?
+  replyTo     Message?    @relation("Replies", fields: [replyToId], references: [id])
+  replies     Message[]   @relation("Replies")
+  isDeleted   Boolean     @default(false)
+  deletedFor  DeletedFor?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  createdAt   DateTime    @default(now())
+  reactions   MessageReaction[]
+}
+enum MessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  PRODUCT_CARD
+  SHARED_CART
+  ORDER_UPDATE
+}
+
+enum DeletedFor {
+  SELF
+  EVERYONE
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  emoji     String
+  createdAt DateTime @default(now())
+  @@unique([messageId, userId])
+}
 
 model OtpCode {
   id        String   @id @default(cuid())
@@ -495,6 +324,5 @@ model OtpCode {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
-
   @@index([phone])
 }

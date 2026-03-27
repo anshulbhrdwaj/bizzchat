@@ -1,216 +1,191 @@
-import { Server, Socket } from 'socket.io';
-import { prisma } from '../lib/prisma';
-import { cache } from '../lib/redis';
-import { verifyAccessToken } from '../lib/jwt';
+import { Server, Socket } from 'socket.io'
+import jwt from 'jsonwebtoken'
+import prisma from '../lib/prisma'
+import logger from '../lib/logger'
 
-interface AuthSocket extends Socket {
-  userId?: string;
-  phone?: string;
+// Socket auth middleware
+function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
+  const token = socket.handshake.auth?.token
+  if (!token) return next(new Error('No auth token'))
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { sub: string }
+    socket.data.userId = payload.sub
+    next()
+  } catch {
+    next(new Error('Invalid token'))
+  }
 }
 
-export function setupSocketHandlers(io: Server): void {
-  // Auth middleware
-  io.use(async (socket: AuthSocket, next) => {
-    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
-    if (!token) return next(new Error('Unauthorized'));
-    try {
-      const payload = verifyAccessToken(token);
-      socket.userId = payload.userId;
-      socket.phone = payload.phone;
-      next();
-    } catch {
-      next(new Error('Invalid token'));
-    }
-  });
+async function broadcastPresence(io: Server, userId: string, isOnline: boolean) {
+  // Get all chats this user is in, broadcast to those rooms
+  const memberships = await prisma.chatMember.findMany({
+    where: { userId },
+    select: { chatId: true },
+  })
+  const lastSeen = new Date().toISOString()
+  for (const m of memberships) {
+    io.to(`chat:${m.chatId}`).emit('presence:update', { userId, isOnline, lastSeen })
+  }
+}
 
-  io.on('connection', async (socket: AuthSocket) => {
-    const userId = socket.userId!;
-    console.log(`Socket connected: ${userId}`);
+export function setupSocketHandlers(io: Server) {
+  io.use(socketAuthMiddleware)
 
-    // Join personal room
-    socket.join(`user:${userId}`);
+  io.on('connection', async (socket) => {
+    const userId = socket.data.userId
+    logger.info('Socket connected', { userId, socketId: socket.id })
 
-    // Join all user's chat rooms
-    const participations = await prisma.chatParticipant.findMany({
-      where: { userId },
-      select: { chatId: true },
-    });
-    participations.forEach(p => socket.join(`chat:${p.chatId}`));
+    // Join user-specific room
+    socket.join(`user:${userId}`)
 
-    // Mark online
-    await prisma.user.update({ where: { id: userId }, data: { isOnline: true } }).catch(() => {});
-    await cache.set(`user:online:${userId}`, '1', 30);
+    // Mark user online
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isOnline: true, lastSeen: new Date() },
+    })
+    await broadcastPresence(io, userId, true)
 
-    // Notify contacts
-    const contacts = await prisma.contact.findMany({ where: { contactId: userId }, select: { userId: true } });
-    contacts.forEach(c => io.to(`user:${c.userId}`).emit('user_online', { userId }));
+    // ─── Chat Room Management ───────────────────────
+    socket.on('join:chat', (chatId: string) => {
+      socket.join(`chat:${chatId}`)
+    })
 
-    // ── JOIN / LEAVE CHAT ──────────────────────────────
-    socket.on('join_chat', (chatId: string) => {
-      socket.join(`chat:${chatId}`);
-    });
+    socket.on('leave:chat', (chatId: string) => {
+      socket.leave(`chat:${chatId}`)
+    })
 
-    socket.on('leave_chat', (chatId: string) => {
-      socket.leave(`chat:${chatId}`);
-    });
-
-    // ── SEND MESSAGE ───────────────────────────────────
-    socket.on('send_message', async (payload: {
-      chatId: string;
-      type: string;
-      content?: string;
-      replyToId?: string;
-      tempId?: string;
+    // ─── Messages ───────────────────────────────────
+    socket.on('message:send', async (data: {
+      chatId: string
+      type: string
+      content?: string
+      replyToId?: string
+      metadata?: Record<string, unknown>
     }) => {
       try {
-        const { chatId, type, content, replyToId, tempId } = payload;
-
-        // Verify member
-        const participant = await prisma.chatParticipant.findUnique({
-          where: { chatId_userId: { chatId, userId } },
-        });
-        if (!participant) return;
-
         const message = await prisma.message.create({
-          data: { chatId, senderId: userId, type: type as any, content, replyToId, sentAt: new Date() },
+          data: {
+            chatId: data.chatId,
+            senderId: userId,
+            type: data.type as any,
+            content: data.content,
+            replyToId: data.replyToId,
+            metadata: data.metadata,
+          },
           include: {
             sender: { select: { id: true, name: true, avatarUrl: true } },
-            replyTo: { select: { id: true, content: true, type: true, sender: { select: { id: true, name: true } } } },
-            reactions: true,
-            statuses: true,
+            replyTo: { include: { sender: { select: { id: true, name: true } } } },
           },
-        });
+        })
 
-        await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
+        await prisma.chat.update({
+          where: { id: data.chatId },
+          data: { updatedAt: new Date() },
+        })
 
-        // Emit to all in room
-        io.to(`chat:${chatId}`).emit('new_message', { ...message, tempId });
-      } catch (err) {
-        console.error('send_message error:', err);
+        io.to(`chat:${data.chatId}`).emit('message:new', message)
+
+        // Notify chat list updates
+        const members = await prisma.chatMember.findMany({
+          where: { chatId: data.chatId },
+          select: { userId: true },
+        })
+        for (const member of members) {
+          io.to(`user:${member.userId}`).emit('chat:updated', {
+            chatId: data.chatId,
+            lastMessage: message,
+            unreadCount: 0, // TODO: Calculate properly
+          })
+        }
+      } catch (error) {
+        logger.error('Socket message:send error', { error, userId })
       }
-    });
+    })
 
-    // ── TYPING ─────────────────────────────────────────
-    socket.on('typing_start', async (chatId: string) => {
-      await cache.set(`typing:${chatId}:${userId}`, '1', 3);
-      socket.to(`chat:${chatId}`).emit('user_typing', { chatId, userId });
-    });
-
-    socket.on('typing_stop', async (chatId: string) => {
-      await cache.del(`typing:${chatId}:${userId}`);
-      socket.to(`chat:${chatId}`).emit('user_stop_typing', { chatId, userId });
-    });
-
-    // ── READ RECEIPTS ──────────────────────────────────
-    socket.on('message_read', async (messageIds: string[]) => {
-      if (!messageIds?.length) return;
-      // Update statuses
-      await prisma.messageStatus.updateMany({
-        where: { messageId: { in: messageIds }, userId, status: { not: 'READ' } },
-        data: { status: 'READ' },
-      }).catch(() => {});
-
-      // Get chat to notify sender
-      const msg = await prisma.message.findFirst({
-        where: { id: messageIds[0] },
-        select: { chatId: true, senderId: true },
-      });
-      if (msg) {
-        io.to(`user:${msg.senderId}`).emit('message_status_updated', {
-          messageIds,
-          status: 'READ',
-          userId,
-          chatId: msg.chatId,
-        });
+    socket.on('message:read', async (data: { chatId: string; messageId: string }) => {
+      try {
+        await prisma.chatMember.update({
+          where: { chatId_userId: { chatId: data.chatId, userId } },
+          data: { lastRead: new Date() },
+        })
+        await prisma.message.update({
+          where: { id: data.messageId },
+          data: { readAt: new Date() },
+        })
+        socket.to(`chat:${data.chatId}`).emit('message:read', {
+          messageId: data.messageId,
+          readAt: new Date().toISOString(),
+        })
+      } catch (error) {
+        logger.error('Socket message:read error', { error, userId })
       }
-    });
+    })
 
-    socket.on('message_delivered', async (messageId: string) => {
-      await prisma.messageStatus.upsert({
-        where: { messageId_userId: { messageId, userId } },
-        create: { messageId, userId, status: 'DELIVERED' },
-        update: { status: 'DELIVERED' },
-      }).catch(() => {});
-    });
-
-    // ── REACTIONS ─────────────────────────────────────
-    socket.on('add_reaction', async ({ messageId, emoji }: { messageId: string; emoji: string }) => {
-      const existing = await prisma.reaction.findUnique({
-        where: { messageId_userId_emoji: { messageId, userId, emoji } },
-      });
-      if (existing) {
-        await prisma.reaction.delete({ where: { id: existing.id } });
-      } else {
-        await prisma.reaction.create({ data: { messageId, userId, emoji } });
+    socket.on('message:react', async (data: { messageId: string; emoji: string }) => {
+      try {
+        const existing = await prisma.messageReaction.findUnique({
+          where: { messageId_userId: { messageId: data.messageId, userId } },
+        })
+        if (existing && existing.emoji === data.emoji) {
+          await prisma.messageReaction.delete({ where: { id: existing.id } })
+        } else if (existing) {
+          await prisma.messageReaction.update({
+            where: { id: existing.id },
+            data: { emoji: data.emoji },
+          })
+        } else {
+          await prisma.messageReaction.create({
+            data: { messageId: data.messageId, userId, emoji: data.emoji },
+          })
+        }
+        // Broadcast updated reactions
+        const message = await prisma.message.findUnique({
+          where: { id: data.messageId },
+          include: { reactions: true },
+        })
+        if (message) {
+          io.to(`chat:${message.chatId}`).emit('message:reacted', {
+            messageId: data.messageId,
+            reactions: message.reactions,
+          })
+        }
+      } catch (error) {
+        logger.error('Socket message:react error', { error, userId })
       }
-      const reactions = await prisma.reaction.findMany({ where: { messageId } });
-      const msg = await prisma.message.findUnique({ where: { id: messageId }, select: { chatId: true } });
-      if (msg) io.to(`chat:${msg.chatId}`).emit('reaction_updated', { messageId, reactions });
-    });
+    })
 
-    // ── CALLS (WebRTC Signaling) ───────────────────────
-    socket.on('call_initiate', async ({ targetUserId, type }: { targetUserId: string; type: string }) => {
-      const call = await prisma.call.create({
-        data: {
-          type: type as any,
-          status: 'RINGING',
-          participants: {
-            create: [{ userId }, { userId: targetUserId }],
-          },
-        },
-      });
-      io.to(`user:${targetUserId}`).emit('call_incoming', {
-        callId: call.id,
-        callerId: userId,
-        type,
-      });
-      socket.emit('call_initiated', { callId: call.id });
-    });
+    // ─── Typing ─────────────────────────────────────
+    socket.on('typing:start', ({ chatId }: { chatId: string }) => {
+      socket.to(`chat:${chatId}`).emit('typing:indicator', { chatId, userId, isTyping: true })
+    })
 
-    socket.on('call_accept', async (callId: string) => {
-      await prisma.call.update({ where: { id: callId }, data: { status: 'ONGOING' } });
-      socket.join(`call:${callId}`);
-      socket.to(`call:${callId}`).emit('call_accepted', { callId, userId });
-    });
+    socket.on('typing:stop', ({ chatId }: { chatId: string }) => {
+      socket.to(`chat:${chatId}`).emit('typing:indicator', { chatId, userId, isTyping: false })
+    })
 
-    socket.on('call_decline', async (callId: string) => {
-      await prisma.call.update({ where: { id: callId }, data: { status: 'DECLINED', endedAt: new Date() } });
-      io.to(`call:${callId}`).emit('call_ended', { callId, reason: 'declined' });
-    });
+    // ─── Presence ───────────────────────────────────
+    socket.on('presence:ping', () => {
+      prisma.user.update({
+        where: { id: userId },
+        data: { lastSeen: new Date() },
+      }).catch(err => logger.error('Presence ping error', { error: err }))
+    })
 
-    socket.on('call_end', async (callId: string) => {
-      await prisma.call.update({ where: { id: callId }, data: { status: 'ENDED', endedAt: new Date() } });
-      io.to(`call:${callId}`).emit('call_ended', { callId, reason: 'ended' });
-    });
-
-    socket.on('ice_candidate', ({ callId, candidate }: { callId: string; candidate: unknown }) => {
-      socket.to(`call:${callId}`).emit('ice_candidate', { callId, candidate, from: userId });
-    });
-
-    socket.on('sdp_offer', ({ callId, sdp }: { callId: string; sdp: unknown }) => {
-      socket.join(`call:${callId}`);
-      socket.to(`call:${callId}`).emit('sdp_offer', { callId, sdp, from: userId });
-    });
-
-    socket.on('sdp_answer', ({ callId, sdp }: { callId: string; sdp: unknown }) => {
-      socket.to(`call:${callId}`).emit('sdp_answer', { callId, sdp, from: userId });
-    });
-
-    // ── HEARTBEAT ─────────────────────────────────────
-    socket.on('heartbeat', async () => {
-      await cache.set(`user:online:${userId}`, '1', 30);
-    });
-
-    // ── DISCONNECT ────────────────────────────────────
+    // ─── Disconnect ─────────────────────────────────
     socket.on('disconnect', async () => {
-      console.log(`Socket disconnected: ${userId}`);
-      await cache.del(`user:online:${userId}`);
-      const lastSeen = new Date();
-      await prisma.user.update({ where: { id: userId }, data: { isOnline: false, lastSeen } }).catch(() => {});
-
-      contacts.forEach(c =>
-        io.to(`user:${c.userId}`).emit('user_offline', { userId, lastSeen }),
-      );
-    });
-  });
+      logger.info('Socket disconnected', { userId, socketId: socket.id })
+      // Wait 30s before marking offline (handles page refreshes)
+      setTimeout(async () => {
+        const sessions = await io.in(`user:${userId}`).fetchSockets()
+        if (sessions.length === 0) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { isOnline: false, lastSeen: new Date() },
+          })
+          await broadcastPresence(io, userId, false)
+        }
+      }, 30000)
+    })
+  })
 }

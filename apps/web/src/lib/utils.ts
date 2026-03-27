@@ -1,70 +1,58 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-import { formatDistanceToNow, format, isToday, isYesterday, isSameYear } from 'date-fns';
+/** Smart timestamp formatting per CLAUDE.md */
+export function formatTimestamp(dateStr: string | Date): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-export function formatMessageTime(date: Date | string): string {
-  const d = new Date(date);
-  return format(d, 'HH:mm');
-}
-
-export function formatChatTimestamp(date: Date | string): string {
-  const d = new Date(date);
-  if (isToday(d)) return format(d, 'HH:mm');
-  if (isYesterday(d)) return 'Yesterday';
-  if (isSameYear(d, new Date())) return format(d, 'MMM d');
-  return format(d, 'MM/dd/yy');
-}
-
-export function formatLastSeen(date: Date | string): string {
-  const d = new Date(date);
-  if (isToday(d)) return `last seen today at ${format(d, 'HH:mm')}`;
-  if (isYesterday(d)) return `last seen yesterday at ${format(d, 'HH:mm')}`;
-  return `last seen ${formatDistanceToNow(d, { addSuffix: true })}`;
-}
-
-export function getAvatarInitials(name: string): string {
-  if (!name || name.trim().length === 0) return '?';
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map(n => n[0])
-    .join('')
-    .toUpperCase();
-}
-
-export function hashStringToColor(str: string): string {
-  const colors = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  ];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  if (diffMins < 1) return 'now'
+  if (diffMins < 60) return `${diffMins}m`
+  if (diffHours < 24 && date.getDate() === now.getDate()) {
+    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
   }
-  return colors[Math.abs(hash) % colors.length];
+
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth()) {
+    return 'Yesterday'
+  }
+
+  if (diffMs < 7 * 24 * 3600000) {
+    return date.toLocaleDateString('en-IN', { weekday: 'short' })
+  }
+
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
 }
 
-export function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+/** Format timestamp for message bubbles — always show time */
+export function formatMessageTime(dateStr: string | Date): string {
+  return new Date(dateStr).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
 }
 
-export function isImageType(mimeType?: string): boolean {
-  return !!mimeType?.startsWith('image/');
+/** Format date separator */
+export function formatDateSeparator(dateStr: string | Date): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === now.toDateString()) return 'Today'
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export function isVideoType(mimeType?: string): boolean {
-  return !!mimeType?.startsWith('video/');
+/** Generate initials from name */
+export function getInitials(name?: string | null): string {
+  if (!name) return '?'
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-export function isAudioType(mimeType?: string): boolean {
-  return !!mimeType?.startsWith('audio/');
+/** Classname merge helper */
+export function cn(...classes: (string | false | undefined | null)[]): string {
+  return classes.filter(Boolean).join(' ')
 }

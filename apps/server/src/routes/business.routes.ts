@@ -1,164 +1,134 @@
-import { Router, Response } from 'express';
-import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { authenticate, AuthRequest } from '../middleware/auth.middleware';
-import { validate } from '../middleware/validate.middleware';
-import { upload } from '../middleware/upload.middleware';
+import { Router } from 'express'
+import multer from 'multer'
+import fs from 'fs'
+import path from 'path'
+import prisma from '../lib/prisma'
+import logger from '../lib/logger'
+import { requireAuth, requireBusinessOwner, AuthRequest } from '../middleware/auth'
+import { validateBody } from '../middleware/validate'
+import { createBusinessProfileSchema, updateBusinessProfileSchema } from '@bizchat/shared'
+import { processImage } from '../lib/imageProcessor'
 
-const router = Router();
-router.use(authenticate);
+const router: Router = Router()
 
-const profileSchema = z.object({
-  businessName: z.string().min(1).max(100),
-  category: z.string().min(1),
-  description: z.string().max(500).optional(),
-  email: z.string().email().optional(),
-  website: z.string().url().optional(),
-  address: z.string().optional(),
-  greetingMsg: z.string().optional(),
-  awayMsg: z.string().optional(),
-  workingHours: z.record(z.any()).optional(),
-});
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only image files are allowed'))
+    }
+  },
+})
 
-// GET /api/v1/business/profile
-router.get('/profile', async (req: AuthRequest, res: Response) => {
-  const profile = await prisma.businessProfile.findUnique({
-    where: { userId: req.userId },
-    include: { products: true, quickReplies: true, labels: true, templates: true },
-  });
-  if (!profile) { res.json(null); return; }
-  res.json(profile);
-});
+const uploadDir = process.env.UPLOAD_DIR || './uploads'
 
-// GET /api/v1/business/user/:userId/public
-router.get('/user/:userId/public', async (req: AuthRequest, res: Response) => {
-  const profile = await prisma.businessProfile.findUnique({
-    where: { userId: req.params.userId },
-    include: { 
-      products: { where: { isAvailable: true }, orderBy: { createdAt: 'desc' } }
-    },
-  });
-  if (!profile) { res.status(404).json({ error: 'Business profile not found' }); return; }
-  res.json(profile);
-});
+// Ensure upload directory exists
+function ensureUploadDir(subdir: string) {
+  const dir = path.join(uploadDir, subdir)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
 
-// POST /api/v1/business/profile
-router.post('/profile', validate(profileSchema), async (req: AuthRequest, res: Response) => {
-  const profile = await prisma.businessProfile.upsert({
-    where: { userId: req.userId },
-    create: { userId: req.userId!, ...req.body },
-    update: req.body,
-  });
-  await prisma.user.update({ where: { id: req.userId }, data: { isVerifiedBusiness: true } });
-  res.json(profile);
-});
+// GET /profile — own business profile
+router.get('/profile', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
+  try {
+    const profile = await prisma.businessProfile.findUnique({
+      where: { id: req.businessId },
+      include: { collections: { orderBy: { sortOrder: 'asc' } } },
+    })
+    res.json(profile)
+  } catch (error) {
+    logger.error('Get business profile error', { error })
+    res.status(500).json({ error: 'Failed to fetch profile' })
+  }
+})
 
-// PATCH /api/v1/business/profile
-router.patch('/profile', validate(profileSchema.partial()), async (req: AuthRequest, res: Response) => {
-  const profile = await prisma.businessProfile.update({
-    where: { userId: req.userId },
-    data: req.body,
-  });
-  res.json(profile);
-});
+// POST /profile — create profile
+router.post('/profile', requireAuth, validateBody(createBusinessProfileSchema), async (req: AuthRequest, res) => {
+  try {
+    const existing = await prisma.businessProfile.findUnique({ where: { userId: req.userId } })
+    if (existing) {
+      res.status(409).json({ error: 'Business profile already exists' })
+      return
+    }
+    const profile = await prisma.businessProfile.create({
+      data: { ...req.body, userId: req.userId! },
+    })
+    res.status(201).json(profile)
+  } catch (error) {
+    logger.error('Create business profile error', { error })
+    res.status(500).json({ error: 'Failed to create profile' })
+  }
+})
 
-// ─── PRODUCTS ─────────────────────────────────────────
-const productSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  price: z.number().optional(),
-  currency: z.string().default('INR'),
-  link: z.string().url().optional(),
-  isAvailable: z.boolean().default(true),
-  collectionId: z.string().optional(),
-});
+// PUT /profile — update
+router.put('/profile', requireAuth, requireBusinessOwner, validateBody(updateBusinessProfileSchema), async (req: AuthRequest, res) => {
+  try {
+    const profile = await prisma.businessProfile.update({
+      where: { id: req.businessId },
+      data: req.body,
+    })
+    res.json(profile)
+  } catch (error) {
+    logger.error('Update business profile error', { error })
+    res.status(500).json({ error: 'Failed to update profile' })
+  }
+})
 
-router.get('/products', async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.json([]); return; }
-  const products = await prisma.product.findMany({ where: { businessId: bp.id }, orderBy: { createdAt: 'desc' } });
-  res.json(products);
-});
+// POST /profile/logo — upload logo (WebP 400px)
+router.post('/profile/logo', requireAuth, requireBusinessOwner, upload.single('logo'), async (req: AuthRequest, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' })
+      return
+    }
+    const { fullBuffer } = await processImage(req.file.buffer, 'logo')
+    const dir = ensureUploadDir('logos')
+    const filename = `${req.businessId}-${Date.now()}.webp`
+    const filepath = path.join(dir, filename)
+    fs.writeFileSync(filepath, fullBuffer)
 
-router.post('/products', validate(productSchema), async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.status(400).json({ error: 'No business profile' }); return; }
-  const product = await prisma.product.create({ data: { businessId: bp.id, ...req.body } });
-  res.status(201).json(product);
-});
+    const logoUrl = `/uploads/logos/${filename}`
+    await prisma.businessProfile.update({
+      where: { id: req.businessId },
+      data: { logoUrl },
+    })
+    res.json({ logoUrl })
+  } catch (error) {
+    logger.error('Upload logo error', { error })
+    res.status(500).json({ error: 'Failed to upload logo' })
+  }
+})
 
-router.patch('/products/:id', validate(productSchema.partial()), async (req: AuthRequest, res: Response) => {
-  const product = await prisma.product.update({ where: { id: req.params.id }, data: req.body });
-  res.json(product);
-});
+// POST /profile/cover — upload cover (WebP 1200px)
+router.post('/profile/cover', requireAuth, requireBusinessOwner, upload.single('cover'), async (req: AuthRequest, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' })
+      return
+    }
+    const { fullBuffer } = await processImage(req.file.buffer, 'cover')
+    const dir = ensureUploadDir('covers')
+    const filename = `${req.businessId}-${Date.now()}.webp`
+    const filepath = path.join(dir, filename)
+    fs.writeFileSync(filepath, fullBuffer)
 
-router.post('/products/:id/image', upload.single('image'), async (req: AuthRequest, res: Response) => {
-  if (!req.file) { res.status(400).json({ error: 'No file' }); return; }
-  const imageUrl = `/uploads/${req.file.filename}`;
-  await prisma.product.update({ where: { id: req.params.id }, data: { imageUrl } });
-  res.json({ imageUrl });
-});
+    const coverUrl = `/uploads/covers/${filename}`
+    await prisma.businessProfile.update({
+      where: { id: req.businessId },
+      data: { coverUrl },
+    })
+    res.json({ coverUrl })
+  } catch (error) {
+    logger.error('Upload cover error', { error })
+    res.status(500).json({ error: 'Failed to upload cover' })
+  }
+})
 
-router.delete('/products/:id', async (req: AuthRequest, res: Response) => {
-  await prisma.product.delete({ where: { id: req.params.id } });
-  res.json({ success: true });
-});
+export default router
 
-// ─── QUICK REPLIES ─────────────────────────────────────
-const qrSchema = z.object({ shortcut: z.string().min(1), message: z.string().min(1) });
-
-router.get('/quick-replies', async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.json([]); return; }
-  res.json(await prisma.quickReply.findMany({ where: { businessId: bp.id } }));
-});
-
-router.post('/quick-replies', validate(qrSchema), async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.status(400).json({ error: 'No business profile' }); return; }
-  const qr = await prisma.quickReply.upsert({
-    where: { businessId_shortcut: { businessId: bp.id, shortcut: req.body.shortcut } },
-    create: { businessId: bp.id, ...req.body },
-    update: { message: req.body.message },
-  });
-  res.json(qr);
-});
-
-router.delete('/quick-replies/:id', async (_req, res: Response) => {
-  await prisma.quickReply.delete({ where: { id: _req.params.id } });
-  res.json({ success: true });
-});
-
-// ─── LABELS ─────────────────────────────────────────────
-const labelSchema = z.object({ name: z.string().min(1), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) });
-
-router.get('/labels', async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.json([]); return; }
-  res.json(await prisma.label.findMany({ where: { businessId: bp.id } }));
-});
-
-router.post('/labels', validate(labelSchema), async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.status(400).json({ error: 'No business profile' }); return; }
-  res.status(201).json(await prisma.label.create({ data: { businessId: bp.id, ...req.body } }));
-});
-
-router.delete('/labels/:id', async (_req, res: Response) => {
-  await prisma.label.delete({ where: { id: _req.params.id } });
-  res.json({ success: true });
-});
-
-// ─── STATS ─────────────────────────────────────────────
-router.get('/stats', async (req: AuthRequest, res: Response) => {
-  const bp = await prisma.businessProfile.findUnique({ where: { userId: req.userId } });
-  if (!bp) { res.json([]); return; }
-  const stats = await prisma.businessStats.findMany({
-    where: { businessId: bp.id },
-    orderBy: { date: 'desc' },
-    take: 30,
-  });
-  res.json(stats);
-});
-
-export default router;

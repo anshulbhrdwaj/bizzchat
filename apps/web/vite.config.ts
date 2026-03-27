@@ -12,11 +12,21 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/uploads': 'http://localhost:3001',
+      '/api': 'http://localhost:4000',
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:4000',
         ws: true,
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+          query: ['@tanstack/react-query'],
+        },
       },
     },
   },

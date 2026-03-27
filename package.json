@@ -1,19 +1,18 @@
 {
-  "name": "nexchat-business",
+  "name": "bizchat",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=apps/server\" \"npm run dev --workspace=apps/web\"",
-    "build": "npm run build --workspace=apps/server && npm run build --workspace=apps/web",
-    "db:push": "npm run db:push --workspace=apps/server",
-    "db:seed": "npm run db:seed --workspace=apps/server",
-    "db:studio": "npm run db:studio --workspace=apps/server"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "db:push": "pnpm --filter server db:push",
+    "db:seed": "pnpm --filter server db:seed",
+    "db:studio": "pnpm --filter server db:studio",
+    "db:generate": "pnpm --filter server db:generate"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "turbo": "^2.0.0"
   }
 }

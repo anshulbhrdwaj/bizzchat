@@ -1,173 +1,236 @@
-import { Router, Response } from 'express';
-import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-import { prisma } from '../lib/prisma';
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../lib/jwt';
-import { cache } from '../lib/redis';
-import { validate } from '../middleware/validate.middleware';
-import { authenticate, AuthRequest } from '../middleware/auth.middleware';
+import { Router } from 'express'
+import rateLimit from 'express-rate-limit'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+import prisma from '../lib/prisma'
+import logger from '../lib/logger'
+import { validateBody } from '../middleware/validate'
+import { sendOtpSchema, verifyOtpSchema } from '@bizchat/shared'
+import { requireAuth, AuthRequest } from '../middleware/auth'
 
-const router = Router();
+const router: Router = Router()
 
-const sendOtpSchema = z.object({
-  phone: z.string().min(7).max(20),
-});
+// Rate limit: 5 OTP requests per hour per IP
+const otpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many OTP requests, try again later' },
+})
 
-const verifyOtpSchema = z.object({
-  phone: z.string().min(7).max(20),
-  code: z.string().length(6),
-});
+// POST /send-otp
+router.post('/send-otp', otpLimiter, validateBody(sendOtpSchema), async (req, res) => {
+  try {
+    const { phone } = req.body
+    const code = String(Math.floor(100000 + Math.random() * 900000))
+    const hashedCode = await bcrypt.hash(code, 10)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 min TTL
 
-const updateProfileSchema = z.object({
-  name: z.string().min(1).max(100),
-  username: z.string().min(3).max(30).optional(),
-  about: z.string().max(500).optional(),
-});
-
-const refreshSchema = z.object({
-  refreshToken: z.string(),
-});
-
-// POST /api/v1/auth/send-otp
-router.post('/send-otp', validate(sendOtpSchema), async (req, res: Response) => {
-  const { phone } = req.body as { phone: string };
-
-  const isStatic = process.env.STATIC_OTP === 'true';
-  const code = isStatic
-    ? (process.env.STATIC_OTP_CODE || '123456')
-    : Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Save OTP (expire in 10 min)
-  await cache.set(`otp:${phone}`, code, 600);
-
-  // Also save to DB for audit
-  await prisma.otpCode.create({
-    data: {
-      phone,
-      code: isStatic ? code : await bcrypt.hash(code, 10),
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    },
-  });
-
-  if (!isStatic) {
-    // TODO: send SMS via Twilio
-    console.log(`OTP for ${phone}: ${code}`);
-  } else {
-    console.log(`[DEV] Static OTP for ${phone}: ${code}`);
-  }
-
-  res.json({ success: true, message: 'OTP sent', ...(isStatic && { code }) });
-});
-
-// POST /api/v1/auth/verify-otp
-router.post('/verify-otp', validate(verifyOtpSchema), async (req, res: Response) => {
-  const { phone, code } = req.body as { phone: string; code: string };
-
-  const storedCode = await cache.get(`otp:${phone}`);
-  if (!storedCode || storedCode !== code) {
-    res.status(400).json({ error: 'Invalid or expired OTP' });
-    return;
-  }
-
-  // Clear OTP
-  await cache.del(`otp:${phone}`);
-
-  // Find or create user
-  let user = await prisma.user.findUnique({ where: { phone } });
-  const isNewUser = !user;
-
-  if (!user) {
-    user = await prisma.user.create({
+    // Store hashed OTP using Prisma client
+    await prisma.otpCode.create({
       data: {
         phone,
-        name: phone, // placeholder until profile setup
-        privacy: { create: {} },
+        code: hashedCode,
+        expiresAt,
       },
-    });
+    })
+
+    // In production: send via SMS gateway
+    // In development: log the OTP
+    logger.info(`OTP generated for phone`, { phone, code: process.env.NODE_ENV === 'development' ? code : '***' })
+
+    res.json({ message: 'OTP sent', expiresAt: expiresAt.toISOString() })
+  } catch (error) {
+    logger.error('Send OTP error', { error })
+    res.status(500).json({ error: 'Failed to send OTP' })
   }
+})
 
-  const payload = { userId: user.id, phone: user.phone };
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken(payload);
-
-  // Store refresh token
-  await cache.set(`refresh:${user.id}`, refreshToken, 7 * 24 * 3600);
-
-  res.json({
-    accessToken,
-    refreshToken,
-    user: {
-      id: user.id,
-      phone: user.phone,
-      name: user.name,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      isNewUser,
-    },
-  });
-});
-
-// POST /api/v1/auth/refresh
-router.post('/refresh', validate(refreshSchema), async (req, res: Response) => {
-  const { refreshToken } = req.body as { refreshToken: string };
+// POST /verify-otp
+router.post('/verify-otp', validateBody(verifyOtpSchema), async (req, res) => {
   try {
-    const payload = verifyRefreshToken(refreshToken);
-    const stored = await cache.get(`refresh:${payload.userId}`);
-    if (!stored || stored !== refreshToken) {
-      res.status(401).json({ error: 'Refresh token invalid' });
-      return;
+    const { phone, code } = req.body
+
+    // Find latest unused OTP for this phone using Prisma client
+    const otpRecord = await prisma.otpCode.findFirst({
+      where: {
+        phone,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!otpRecord) {
+      res.status(400).json({ error: 'Invalid or expired OTP' })
+      return
     }
-    const accessToken = signAccessToken({ userId: payload.userId, phone: payload.phone });
-    res.json({ accessToken });
-  } catch {
-    res.status(401).json({ error: 'Invalid refresh token' });
-  }
-});
 
-// POST /api/v1/auth/logout
-router.post('/logout', authenticate, async (req: AuthRequest, res: Response) => {
-  await cache.del(`refresh:${req.userId}`);
-  // Mark offline
-  await prisma.user.update({
-    where: { id: req.userId },
-    data: { isOnline: false, lastSeen: new Date() },
-  }).catch(() => {});
-  res.json({ success: true });
-});
-
-// PATCH /api/v1/auth/profile
-router.patch('/profile', authenticate, validate(updateProfileSchema), async (req: AuthRequest, res: Response) => {
-  const { name, username, about } = req.body as { name: string; username?: string; about?: string };
-
-  if (username) {
-    const existing = await prisma.user.findFirst({
-      where: { username, NOT: { id: req.userId } },
-    });
-    if (existing) {
-      res.status(409).json({ error: 'Username taken' });
-      return;
+    const isValid = await bcrypt.compare(code, otpRecord.code)
+    if (!isValid) {
+      res.status(400).json({ error: 'Invalid OTP' })
+      return
     }
+
+    // Mark OTP as used
+    await prisma.otpCode.update({
+      where: { id: otpRecord.id },
+      data: { used: true },
+    })
+
+    // Create user if new, or fetch existing
+    let user = await prisma.user.findUnique({ where: { phone } })
+    const isNewUser = !user
+    if (!user) {
+      user = await prisma.user.create({ data: { phone } })
+    }
+
+    // Generate JWT pair
+    const tokenFamily = crypto.randomUUID()
+    const accessToken = jwt.sign(
+      { sub: user.id },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' }
+    )
+    const refreshToken = jwt.sign(
+      { sub: user.id, family: tokenFamily },
+      process.env.REFRESH_TOKEN_SECRET!,
+      { expiresIn: '30d' }
+    )
+
+    // Store refresh token
+    await prisma.refreshToken.create({
+      data: {
+        token: await bcrypt.hash(refreshToken, 10),
+        userId: user.id,
+        family: tokenFamily,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    res.json({
+      user: {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        isOnline: user.isOnline,
+        lastSeen: user.lastSeen.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      accessToken,
+      refreshToken,
+      isNewUser,
+    })
+  } catch (error) {
+    logger.error('Verify OTP error', { error })
+    res.status(500).json({ error: 'Verification failed' })
   }
+})
 
-  const user = await prisma.user.update({
-    where: { id: req.userId },
-    data: { name, username, about },
-    select: { id: true, phone: true, name: true, username: true, about: true, avatarUrl: true },
-  });
-  res.json(user);
-});
+// POST /refresh
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body
+    if (!refreshToken) {
+      res.status(401).json({ error: 'No refresh token' })
+      return
+    }
 
-// GET /api/v1/auth/me
-router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.userId },
-    select: {
-      id: true, phone: true, name: true, username: true, about: true,
-      avatarUrl: true, isOnline: true, lastSeen: true, isVerifiedBusiness: true,
-    },
-  });
-  if (!user) { res.status(404).json({ error: 'User not found' }); return; }
-  res.json(user);
-});
+    const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as {
+      sub: string
+      family: string
+    }
 
-export default router;
+    // Find tokens in this family
+    const tokens = await prisma.refreshToken.findMany({
+      where: { family: payload.family },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    // Check for token reuse (security)
+    const currentToken = tokens.find(t => !t.used)
+    if (!currentToken) {
+      // Token reuse detected — invalidate entire family
+      await prisma.refreshToken.deleteMany({ where: { family: payload.family } })
+      res.status(401).json({ error: 'Token reuse detected' })
+      return
+    }
+
+    // Verify the token matches
+    const isValid = await bcrypt.compare(refreshToken, currentToken.token)
+    if (!isValid) {
+      res.status(401).json({ error: 'Invalid refresh token' })
+      return
+    }
+
+    // Mark as used
+    await prisma.refreshToken.update({
+      where: { id: currentToken.id },
+      data: { used: true },
+    })
+
+    // Generate new pair (rotation)
+    const newAccessToken = jwt.sign(
+      { sub: payload.sub },
+      process.env.JWT_SECRET!,
+      { expiresIn: '15m' }
+    )
+    const newRefreshToken = jwt.sign(
+      { sub: payload.sub, family: payload.family },
+      process.env.REFRESH_TOKEN_SECRET!,
+      { expiresIn: '30d' }
+    )
+
+    await prisma.refreshToken.create({
+      data: {
+        token: await bcrypt.hash(newRefreshToken, 10),
+        userId: payload.sub,
+        family: payload.family,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } })
+
+    res.json({
+      user: user ? {
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        isOnline: user.isOnline,
+        lastSeen: user.lastSeen.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      } : null,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    })
+  } catch (error) {
+    logger.error('Refresh token error', { error })
+    res.status(401).json({ error: 'Invalid refresh token' })
+  }
+})
+
+// POST /logout
+router.post('/logout', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { refreshToken } = req.body
+    if (refreshToken) {
+      try {
+        const payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { family: string }
+        await prisma.refreshToken.deleteMany({ where: { family: payload.family } })
+      } catch {
+        // Token already invalid, that's fine
+      }
+    }
+    res.json({ message: 'Logged out' })
+  } catch (error) {
+    logger.error('Logout error', { error })
+    res.status(500).json({ error: 'Logout failed' })
+  }
+})
+
+export default router

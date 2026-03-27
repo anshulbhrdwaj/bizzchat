@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: nexchat_postgres
+    container_name: bizchat_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: nexchat
+      POSTGRES_DB: bizchat
     ports:
       - "5444:5432"
     volumes:
@@ -16,7 +14,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: nexchat_redis
+    container_name: bizchat_redis
     restart: unless-stopped
     ports:
       - "6379:6379"

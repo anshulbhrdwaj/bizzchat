@@ -1,54 +1,35 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { User } from '../types';
-import { api } from '../lib/api';
-import { connectSocket, disconnectSocket } from '../lib/socket';
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { User } from '@bizchat/shared'
 
-interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  isAuthenticated: boolean;
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
-  updateProfile: (data: Partial<User>) => void;
-  logout: () => void;
+interface AuthStore {
+  user: User | null
+  accessToken: string | null
+  isAuthenticated: boolean
+  setAuth: (user: User, token: string) => void
+  updateUser: (updates: Partial<User>) => void
+  logout: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuthStore = create<AuthStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
-
-      setAuth: (user, accessToken, refreshToken) => {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        connectSocket(accessToken);
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
-      },
-
-      updateProfile: (data) => {
-        set(state => ({ user: state.user ? { ...state.user, ...data } : null }));
-      },
-
-      logout: async () => {
-        try { await api.post('/auth/logout'); } catch { /* ignore */ }
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        disconnectSocket();
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
-      },
+      setAuth: (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
+      updateUser: (updates) => set(state => ({
+        user: state.user ? { ...state.user, ...updates } : null,
+      })),
+      logout: () => set({ user: null, accessToken: null, isAuthenticated: false }),
     }),
     {
-      name: 'nexchat-auth',
+      name: 'bizchat-auth',
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }
   )
-);
+)

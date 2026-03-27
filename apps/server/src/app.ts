@@ -1,67 +1,71 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import compression from 'compression';
-import rateLimit from 'express-rate-limit';
-import path from 'path';
-import dotenv from 'dotenv';
+import express from 'express'
+import helmet from 'helmet'
+import cors from 'cors'
+import cookieParser from 'cookie-parser'
+import rateLimit from 'express-rate-limit'
+import logger from './lib/logger'
 
-dotenv.config();
+// Routes
+import authRoutes from './routes/auth.routes'
+import businessRoutes from './routes/business.routes'
+import catalogRoutes from './routes/catalog.routes'
+import cartRoutes from './routes/cart.routes'
+import sharedCartRoutes from './routes/sharedCart.routes'
+import orderRoutes from './routes/order.routes'
+import businessOrderRoutes from './routes/businessOrder.routes'
+import chatRoutes from './routes/chat.routes'
 
-import authRouter from './routes/auth.routes';
-import usersRouter from './routes/users.routes';
-import chatsRouter from './routes/chats.routes';
-import messagesRouter from './routes/messages.routes';
-import groupsRouter from './routes/groups.routes';
-import businessRouter from './routes/business.routes';
-import mediaRouter from './routes/media.routes';
-import callsRouter from './routes/calls.routes';
-import { errorHandler } from './middleware/error.middleware';
+const app = express()
 
-const app = express();
-
-// Security
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// ─── Middleware Stack (exact order per CLAUDE.md) ────────
+app.use(helmet())
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(','),
   credentials: true,
-}));
+}))
+app.use(express.json({ limit: '10mb' }))
+app.use(cookieParser())
 
-// Rate limiting
-app.use('/api/', rateLimit({
+// Request logger
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.path}`, {
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+  })
+  next()
+})
+
+// Global rate limit
+const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-}));
+})
+app.use('/api', apiLimiter)
 
-// Body parsing
-app.use(compression() as any);
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(morgan('dev'));
+// Static uploads
+app.use('/uploads', express.static(process.env.UPLOAD_DIR || './uploads'))
 
-// Static file serving for local uploads
-app.use('/uploads', express.static(path.resolve(process.cwd(), process.env.UPLOADS_DIR || 'uploads')));
-
-// API Routes
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/users', usersRouter);
-app.use('/api/v1/chats', chatsRouter);
-app.use('/api/v1/messages', messagesRouter);
-app.use('/api/v1/groups', groupsRouter);
-app.use('/api/v1/business', businessRouter);
-app.use('/api/v1/media', mediaRouter);
-app.use('/api/v1/calls', callsRouter);
+// ─── Routes ─────────────────────────────────────────────
+app.use('/api/auth', authRoutes)
+app.use('/api/business', businessRoutes)
+app.use('/api/catalog', catalogRoutes)
+app.use('/api/cart', cartRoutes)
+app.use('/api/shared-carts', sharedCartRoutes)
+app.use('/api/orders', orderRoutes)
+app.use('/api/business/orders', businessOrderRoutes)
+app.use('/api/chats', chatRoutes)
 
 // Health check
-app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date() }));
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
 
-// 404
-app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
+// Global error handler
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error('Unhandled error', { error: err.message, stack: err.stack })
+  res.status(500).json({ error: 'Internal server error' })
+})
 
-// Error handler
-app.use(errorHandler);
-
-export default app;
+export default app

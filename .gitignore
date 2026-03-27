@@ -1,3 +1,8 @@
 node_modules
 dist
-android
+.env
+.env.local
+*.log
+uploads
+.turbo
+.DS_Store

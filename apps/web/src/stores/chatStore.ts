@@ -1,97 +1,69 @@
-import { create } from 'zustand';
-import type { Chat, Message } from '../types';
+import { create } from 'zustand'
+import type { Chat, Message } from '@bizchat/shared'
 
-interface ChatState {
-  chats: Chat[];
-  activeChatId: string | null;
-  typingUsers: Record<string, string[]>;
-  draftMessages: Record<string, string>;
-  unreadCounts: Record<string, number>;
-
-  setChats: (chats: Chat[]) => void;
-  addOrUpdateChat: (chat: Chat) => void;
-  setActiveChat: (id: string | null) => void;
-
-  addMessage: (chatId: string, message: Message) => void;
-  updateMessage: (chatId: string, messageId: string, data: Partial<Message>) => void;
-  removeMessage: (chatId: string, messageId: string) => void;
-  updateLastMessage: (chatId: string, message: Message) => void;
-
-  setTyping: (chatId: string, userId: string, isTyping: boolean) => void;
-  setDraft: (chatId: string, text: string) => void;
-  updateUnread: (chatId: string, count: number) => void;
-  clearUnread: (chatId: string) => void;
+interface ChatStore {
+  chats: Chat[]
+  activeChat: Chat | null
+  messages: Record<string, Message[]>
+  typingUsers: Record<string, string[]>
+  setChats: (chats: Chat[]) => void
+  setActiveChat: (chat: Chat | null) => void
+  addMessage: (chatId: string, msg: Message) => void
+  updateMessage: (chatId: string, msgId: string, updates: Partial<Message>) => void
+  setMessages: (chatId: string, messages: Message[]) => void
+  appendMessages: (chatId: string, messages: Message[]) => void
+  setTyping: (chatId: string, userId: string, isTyping: boolean) => void
+  updateChatPreview: (chatId: string, lastMsg: Message) => void
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatStore>((set) => ({
   chats: [],
-  activeChatId: null,
+  activeChat: null,
+  messages: {},
   typingUsers: {},
-  draftMessages: {},
-  unreadCounts: {},
 
   setChats: (chats) => set({ chats }),
 
-  addOrUpdateChat: (chat) =>
-    set(state => {
-      const exists = state.chats.find(c => c.id === chat.id);
-      if (exists) {
-        return { chats: state.chats.map(c => c.id === chat.id ? chat : c) };
-      }
-      return { chats: [chat, ...state.chats] };
-    }),
+  setActiveChat: (chat) => set({ activeChat: chat }),
 
-  setActiveChat: (id) => set({ activeChatId: id }),
+  addMessage: (chatId, msg) => set(state => ({
+    messages: {
+      ...state.messages,
+      [chatId]: [...(state.messages[chatId] || []), msg],
+    },
+  })),
 
-  addMessage: (chatId, message) =>
-    set(state => {
-      const chats = state.chats.map(chat => {
-        if (chat.id !== chatId) return chat;
-        return { ...chat, lastMessage: message, updatedAt: message.createdAt };
-      });
-      // Sort by updatedAt
-      chats.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      return { chats };
-    }),
+  updateMessage: (chatId, msgId, updates) => set(state => ({
+    messages: {
+      ...state.messages,
+      [chatId]: (state.messages[chatId] || []).map(m =>
+        m.id === msgId ? { ...m, ...updates } : m
+      ),
+    },
+  })),
 
-  updateMessage: (chatId, messageId, data) =>
-    set(state => {
-      const chats = state.chats.map(chat => {
-        if (chat.id !== chatId) return chat;
-        if (chat.lastMessage?.id === messageId) {
-          return { ...chat, lastMessage: { ...chat.lastMessage, ...data } };
-        }
-        return chat;
-      });
-      return { chats };
-    }),
+  setMessages: (chatId, messages) => set(state => ({
+    messages: { ...state.messages, [chatId]: messages },
+  })),
 
-  removeMessage: (chatId, messageId) =>
-    set(state => {
-      void chatId; void messageId; // handled at message query level
-      return { chats: state.chats };
-    }),
+  appendMessages: (chatId, messages) => set(state => ({
+    messages: {
+      ...state.messages,
+      [chatId]: [...messages, ...(state.messages[chatId] || [])],
+    },
+  })),
 
-  updateLastMessage: (chatId, message) =>
-    set(state => ({
-      chats: state.chats.map(c => c.id === chatId ? { ...c, lastMessage: message } : c),
-    })),
+  setTyping: (chatId, userId, isTyping) => set(state => {
+    const current = state.typingUsers[chatId] || []
+    const updated = isTyping
+      ? [...new Set([...current, userId])]
+      : current.filter(id => id !== userId)
+    return { typingUsers: { ...state.typingUsers, [chatId]: updated } }
+  }),
 
-  setTyping: (chatId, userId, isTyping) =>
-    set(state => {
-      const current = state.typingUsers[chatId] || [];
-      const updated = isTyping
-        ? [...new Set([...current, userId])]
-        : current.filter(id => id !== userId);
-      return { typingUsers: { ...state.typingUsers, [chatId]: updated } };
-    }),
-
-  setDraft: (chatId, text) =>
-    set(state => ({ draftMessages: { ...state.draftMessages, [chatId]: text } })),
-
-  updateUnread: (chatId, count) =>
-    set(state => ({ unreadCounts: { ...state.unreadCounts, [chatId]: count } })),
-
-  clearUnread: (chatId) =>
-    set(state => ({ unreadCounts: { ...state.unreadCounts, [chatId]: 0 } })),
-}));
+  updateChatPreview: (chatId, lastMsg) => set(state => ({
+    chats: state.chats.map(c =>
+      c.id === chatId ? { ...c, lastMessage: lastMsg, updatedAt: lastMsg.createdAt } : c
+    ).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+  })),
+}))

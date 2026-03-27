@@ -1,170 +1,99 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import '@fontsource/plus-jakarta-sans';
-@import '@fontsource/inter';
-@import '@fontsource/jetbrains-mono';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════════════════════════════════
-   NEXCHAT DESIGN SYSTEM — CSS CUSTOM PROPERTIES
-   ═══════════════════════════════════════════════════════ */
-
+/* ─── Design Tokens (CLAUDE.md Section 3.1) ──────────── */
 :root {
-  /* Radius */
-  --radius: 0.625rem;
+  /* Brand */
+  --color-primary: #5B3FD9;
+  --color-primary-mid: #7B5FE8;
+  --color-primary-light: #EDE9FF;
+  --color-accent-cyan: #0891B2;
 
-  /* ── DARK THEME (default) ── */
-  /* Backgrounds */
-  --bg-primary: #0E1621;
-  --bg-secondary: #17212B;
-  --bg-tertiary: #1C2733;
-  --bg-input: #242F3D;
-  --bg-hover: #2B5278;
-  --bg-selected: #2B5278;
-  --bg-message-out: #2B5278;
-  --bg-message-in: #182533;
-
-  /* Accent colors */
-  --accent-primary: #3E9BF7;
-  --accent-secondary: #54C2E8;
-  --accent-success: #4FCA6E;
-  --accent-warning: #F5B942;
-  --accent-danger: #E55757;
-  --accent-purple: #8B5CF6;
-  --accent-gradient: linear-gradient(135deg, #3E9BF7, #54C2E8);
+  /* Surfaces */
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-surface-elevated: #FFFFFF;
 
   /* Text */
-  --text-primary: #FFFFFF;
-  --text-secondary: #8BA5C1;
-  --text-tertiary: #4D6B8A;
-  --text-link: #3E9BF7;
-  --text-timestamp: #627D8E;
+  --color-text-primary: #111827;
+  --color-text-body: #374151;
+  --color-text-muted: #6B7280;
 
-  /* Glass morphism */
-  --glass-bg: rgba(23, 33, 43, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --glass-blur: blur(20px);
-  --glass-bg-light: rgba(255, 255, 255, 0.06);
+  /* Chat Bubbles */
+  --bubble-outgoing-bg: rgba(91, 63, 217, 0.85);
+  --bubble-outgoing-text: #FFFFFF;
+  --bubble-incoming-bg: rgba(255, 255, 255, 0.75);
+  --bubble-incoming-text: #111827;
+  --bubble-border: rgba(91, 63, 217, 0.15);
 
-  /* Typography scale */
-  --text-xs: 0.6875rem;
-  --text-sm: 0.75rem;
-  --text-base: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 2rem;
+  /* Status Colors */
+  --color-success: #059669;
+  --color-warning: #D97706;
+  --color-error: #DC2626;
+  --color-info: #0891B2;
 
-  /* Spacing */
-  --nav-rail-width: 72px;
-  --sidebar-width: 320px;
-  --info-panel-width: 380px;
+  /* Glass Effects */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-blur: blur(12px);
+  --glass-shadow: 0 4px 24px rgba(91, 63, 217, 0.08);
 
-  /* Animation easing */
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  /* Spacing Scale */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-8: 32px; --space-10: 40px; --space-12: 48px;
 
-  /* shadcn/ui vars — dark */
-  --background: 214 28% 10%;
-  --foreground: 0 0% 100%;
-  --card: 210 24% 14%;
-  --card-foreground: 0 0% 100%;
-  --popover: 210 24% 14%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 210 90% 61%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 24% 18%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 210 24% 18%;
-  --muted-foreground: 213 24% 60%;
-  --accent: 210 24% 18%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 62% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 210 24% 22%;
-  --input: 210 24% 22%;
-  --ring: 210 90% 61%;
+  /* Border Radius */
+  --radius-sm: 6px;   --radius-md: 12px;  --radius-lg: 16px;
+  --radius-xl: 24px;  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-base: 200ms ease-out;
+  --transition-slow: 300ms ease;
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-[data-theme="light"] {
-  --bg-primary: #F4F4F5;
-  --bg-secondary: #FFFFFF;
-  --bg-tertiary: #FAFAFA;
-  --bg-input: #F0F0F1;
-  --bg-hover: #E8F0FE;
-  --bg-selected: #D2E3FF;
-  --bg-message-out: #EFFDDE;
-  --bg-message-in: #FFFFFF;
-  --accent-primary: #2B7BDB;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --text-primary: #1A1A2E;
-  --text-secondary: #5F7EA0;
-  --text-tertiary: #94A3B8;
-  --text-timestamp: #8BA5C1;
-
-  --background: 240 6% 97%;
-  --foreground: 220 20% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 220 20% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 220 20% 10%;
-  --primary: 213 80% 51%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 6% 93%;
-  --secondary-foreground: 220 20% 10%;
-  --muted: 240 6% 93%;
-  --muted-foreground: 213 14% 50%;
-  --accent: 240 6% 93%;
-  --accent-foreground: 220 20% 10%;
-  --border: 220 14% 90%;
-  --input: 220 14% 90%;
+/* ─── Dark Mode Variables (CLAUDE.md Section 3.1) ─────── */
+.dark {
+  --color-background: #0F0B1A;
+  --color-surface: #1A1428;
+  --color-surface-elevated: #221B35;
+  --color-text-primary: #F9FAFB;
+  --color-text-body: #E5E7EB;
+  --color-text-muted: #9CA3AF;
+  --glass-bg: rgba(26, 20, 40, 0.7);
+  --glass-border: rgba(91, 63, 217, 0.2);
+  --bubble-incoming-bg: rgba(34, 27, 53, 0.85);
+  --bubble-incoming-text: #F9FAFB;
 }
 
-/* ═══════════════════════════════════════════════════════
-   BASE STYLES
-   ═══════════════════════════════════════════════════════ */
-
+/* ─── Base Styles ─────────────────────────────────────── */
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 html {
-  -webkit-text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;
+  font-family: 'Geist Variable', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: var(--text-base);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  height: 100dvh;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-#root {
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ═══════════════════════════════════════════════════════
-   GLASSMORPHISM UTILITIES
-   ═══════════════════════════════════════════════════════ */
-
-.glass-panel {
+/* ─── Glassmorphism Utilities (Section 3.3) ───────────── */
+.glass {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -172,100 +101,120 @@ body {
   box-shadow: var(--glass-shadow);
 }
 
-.glass-light {
-  background: var(--glass-bg-light);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
 }
 
-/* ═══════════════════════════════════════════════════════
-   SCROLLBAR STYLES
-   ═══════════════════════════════════════════════════════ */
-
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--glass-border);
 }
 
-/* ═══════════════════════════════════════════════════════
-   MESSAGE BUBBLE TAILS (SVG)
-   ═══════════════════════════════════════════════════════ */
-
-.bubble-tail-out::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  right: -8px;
-  width: 10px;
-  height: 14px;
-  background: var(--bg-message-out);
-  clip-path: polygon(0 0, 0 100%, 100% 100%);
+.dark .glass-nav {
+  background: rgba(15, 11, 26, 0.85);
 }
 
-.bubble-tail-in::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -8px;
-  width: 10px;
-  height: 14px;
-  background: var(--bg-message-in);
-  clip-path: polygon(100% 0, 0 100%, 100% 100%);
-}
-
-/* ═══════════════════════════════════════════════════════
-   TYPING INDICATOR DOTS
-   ═══════════════════════════════════════════════════════ */
-
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
-
-/* ═══════════════════════════════════════════════════════
-   GRADIENT MESH BACKGROUND
-   ═══════════════════════════════════════════════════════ */
-
+/* ─── Mesh Background ─────────────────────────────────── */
 .mesh-bg {
   position: fixed;
   inset: 0;
+  z-index: -1;
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(62, 155, 247, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(84, 194, 232, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(43, 82, 120, 0.04) 0%, transparent 70%),
-    var(--bg-primary);
-  pointer-events: none;
-  z-index: 0;
+    radial-gradient(ellipse at 20% 50%, rgba(91, 63, 217, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(8, 145, 178, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(123, 95, 232, 0.05) 0%, transparent 50%);
 }
 
-/* ═══════════════════════════════════════════════════════
-   SELECTION
-   ═══════════════════════════════════════════════════════ */
+.dark .mesh-bg {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(91, 63, 217, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(8, 145, 178, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, rgba(123, 95, 232, 0.08) 0%, transparent 50%);
+}
 
+/* ─── Safe Area for Mobile ────────────────────────────── */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ─── Scrollbar Styling ───────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(91, 63, 217, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 63, 217, 0.4);
+}
+
+/* ─── Focus Rings ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Touch Targets ───────────────────────────────────── */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ─── Animations (CLAUDE.md Section 6) ────────────────── */
+@keyframes scale-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+@keyframes fade-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(91, 63, 217, 0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(91, 63, 217, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(91, 63, 217, 0); }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.animate-scale-in   { animation: scale-in 250ms var(--transition-spring) forwards; }
+.animate-fade-up    { animation: fade-up 300ms ease-out forwards; }
+.animate-fade-in    { animation: fade-in 200ms ease-out forwards; }
+.animate-pulse-ring { animation: pulse-ring 1.5s infinite; }
+
+/* ─── Selection ───────────────────────────────────────── */
 ::selection {
-  background: rgba(62, 155, 247, 0.3);
-  color: var(--text-primary);
+  background: rgba(91, 63, 217, 0.2);
+  color: var(--color-text-primary);
 }
 
-/* ═══════════════════════════════════════════════════════
-   UTILITY CLASSES
-   ═══════════════════════════════════════════════════════ */
-
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* ═══════════════════════════════════════════════════════
-   SAFE AREA INSETS (mobile)
-   ═══════════════════════════════════════════════════════ */
-
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-.safe-top { padding-top: env(safe-area-inset-top); }
+/* ─── Input placeholder ───────────────────────────────── */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}

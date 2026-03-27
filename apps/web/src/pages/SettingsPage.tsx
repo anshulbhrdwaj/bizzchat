@@ -1,119 +1,208 @@
-import { useState } from 'react';
-import {
-  Bell, Lock, Eye, Palette, Database, Globe, Keyboard, User, ChevronRight, Moon, Sun, Monitor
-} from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
-import { useUIStore } from '../stores/uiStore';
-import ProfileSettings from '../components/settings/ProfileSettings';
-import PlaceholderSettings from '../components/settings/PlaceholderSettings';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/stores/authStore'
+import { getInitials } from '@/lib/utils'
 
-const SETTINGS_SECTIONS = [
-  { icon: User, label: 'Profile', sublabel: 'Name, photo, about' },
-  { icon: Bell, label: 'Notifications', sublabel: 'Messages, groups, calls' },
-  { icon: Lock, label: 'Privacy & Security', sublabel: 'Last seen, read receipts, blocked' },
-  { icon: Palette, label: 'Appearance', sublabel: 'Theme, wallpaper, font size' },
-  { icon: Database, label: 'Storage', sublabel: 'Manage storage & data' },
-  { icon: Globe, label: 'Language', sublabel: 'App language' },
-  { icon: Keyboard, label: 'Shortcuts', sublabel: 'Keyboard shortcuts' },
-];
-
-type ThemeOption = 'dark' | 'light' | 'system';
+interface SettingsItem {
+  icon: string
+  label: string
+  subtitle: string
+  action?: () => void
+  disabled?: boolean
+  toggle?: boolean
+  toggled?: boolean
+  onToggle?: () => void
+}
 
 export default function SettingsPage() {
-  const { user } = useAuthStore();
-  const { theme, setTheme } = useUIStore();
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const navigate = useNavigate()
+  const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
+  const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'))
+  const [notifications, setNotifications] = useState(true)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
-  if (activeSection === 'Profile') {
-    return <ProfileSettings onBack={() => setActiveSection(null)} />;
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+    localStorage.setItem('bizchat-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/auth')
   }
 
-  if (activeSection && activeSection !== 'Profile') {
-    return <PlaceholderSettings title={activeSection} onBack={() => setActiveSection(null)} />;
-  }
+  const sections: { title: string; items: SettingsItem[] }[] = [
+    {
+      title: 'Account',
+      items: [
+        {
+          icon: '👤',
+          label: 'Edit Profile',
+          subtitle: user?.name || 'Set your name',
+          action: () => {},
+        },
+        {
+          icon: '📱',
+          label: 'Phone Number',
+          subtitle: user?.phone || '+91 ····',
+          action: () => {},
+          disabled: true,
+        },
+      ],
+    },
+    {
+      title: 'Business',
+      items: [
+        {
+          icon: '🏪',
+          label: 'Business Profile',
+          subtitle: 'Set up your business',
+          action: () => navigate('/business/setup'),
+        },
+      ],
+    },
+    {
+      title: 'Preferences',
+      items: [
+        {
+          icon: '🌙',
+          label: 'Dark Mode',
+          subtitle: darkMode ? 'On' : 'Off',
+          toggle: true,
+          toggled: darkMode,
+          onToggle: () => setDarkMode(!darkMode),
+        },
+        {
+          icon: '🔔',
+          label: 'Notifications',
+          subtitle: notifications ? 'Enabled' : 'Disabled',
+          toggle: true,
+          toggled: notifications,
+          onToggle: () => setNotifications(!notifications),
+        },
+      ],
+    },
+    {
+      title: 'About',
+      items: [
+        {
+          icon: '📄',
+          label: 'Privacy Policy',
+          subtitle: '',
+          action: () => {},
+        },
+        {
+          icon: '📋',
+          label: 'Terms of Service',
+          subtitle: '',
+          action: () => {},
+        },
+        {
+          icon: 'ℹ️',
+          label: 'App Version',
+          subtitle: '1.0.0',
+          disabled: true,
+        },
+      ],
+    },
+  ]
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto bg-[var(--bg-primary)]">
-      <div 
-        className="px-4 pb-4 border-b" 
-        style={{ 
-          borderColor: 'var(--glass-border)',
-          paddingTop: 'calc(16px + env(safe-area-inset-top))' 
-        }}
-      >
-        <h2 className="text-lg font-bold font-display" style={{ color: 'var(--text-primary)' }}>Settings</h2>
-      </div>
+    <div className="flex-1 overflow-y-auto pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
+      {/* Header */}
+      <header className="px-4 pt-4 pb-6">
+        <h1 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>Settings</h1>
 
-      {/* Profile card */}
-      <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--glass-border)' }}>
-        <div className="flex items-center gap-4">
-          <div
-            className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-white font-bold"
-            style={{ background: 'var(--accent-primary)' }}
-          >
-            {user?.avatarUrl
-              ? <img src={user.avatarUrl} className="w-full h-full object-cover" />
-              : user?.name?.[0]?.toUpperCase() || 'U'}
+        {/* User card */}
+        <div className="glass-card p-4 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))' }}>
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-xl font-bold text-white">{getInitials(user?.name)}</span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{user?.name}</p>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{user?.about || 'Hey there! I am using BizChat.'}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{user?.phone}</p>
+            <p className="text-base font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{user?.name || 'User'}</p>
+            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{user?.phone}</p>
           </div>
-          <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
-        </div>
-      </div>
-
-      {/* Theme switcher */}
-      <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--glass-border)' }}>
-        <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>THEME</p>
-        <div className="flex gap-2">
-          {([
-            { value: 'dark', label: 'Dark', Icon: Moon },
-            { value: 'light', label: 'Light', Icon: Sun },
-            { value: 'system', label: 'System', Icon: Monitor },
-          ] as { value: ThemeOption; label: string; Icon: typeof Moon }[]).map(({ value, label, Icon }) => (
-            <button
-              key={value}
-              onClick={() => setTheme(value)}
-              className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all"
-              style={{
-                background: theme === value ? 'var(--bg-selected)' : 'var(--bg-input)',
-                borderColor: theme === value ? 'var(--accent-primary)' : 'var(--glass-border)',
-                color: theme === value ? 'var(--accent-primary)' : 'var(--text-secondary)',
-              }}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-xs">{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Settings list */}
-      <div className="flex-1">
-        {SETTINGS_SECTIONS.map(({ icon: Icon, label, sublabel }) => (
-          <button
-            key={label}
-            onClick={() => setActiveSection(label)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-hover)] transition-colors text-left border-b"
-            style={{ borderColor: 'var(--glass-border)' }}
-          >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-tertiary)' }}>
-              <Icon className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{sublabel}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <button className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--color-surface)', color: 'var(--color-text-muted)' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M11 2L14 5L6 13H3V10L11 2Z" stroke="currentColor" strokeWidth="1.5" /></svg>
           </button>
+        </div>
+      </header>
+
+      {/* Sections */}
+      <div className="px-4 space-y-6">
+        {sections.map(section => (
+          <div key={section.title}>
+            <p className="text-[10px] font-bold uppercase tracking-wider mb-2 px-1" style={{ color: 'var(--color-text-muted)' }}>
+              {section.title}
+            </p>
+            <div className="glass-card overflow-hidden">
+              {section.items.map((item, i) => (
+                <button
+                  key={item.label}
+                  onClick={item.toggle ? item.onToggle : item.action}
+                  disabled={item.disabled}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors"
+                  style={{
+                    borderBottom: i < section.items.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                    opacity: item.disabled ? 0.6 : 1,
+                  }}
+                >
+                  <span className="text-lg w-8 text-center shrink-0">{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{item.label}</p>
+                    {item.subtitle && <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{item.subtitle}</p>}
+                  </div>
+                  {item.toggle ? (
+                    <div className="w-11 h-6 rounded-full relative transition-all shrink-0"
+                      style={{ background: item.toggled ? 'var(--color-primary)' : 'var(--color-surface)', border: '1px solid var(--glass-border)' }}>
+                      <div className="absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform"
+                        style={{ width: 18, height: 18, transform: item.toggled ? 'translateX(22px)' : 'translateX(2px)' }} />
+                    </div>
+                  ) : !item.disabled && (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
+
+        {/* Logout */}
+        <button onClick={() => setShowLogoutConfirm(true)}
+          className="w-full py-3.5 rounded-xl text-sm font-semibold transition-all"
+          style={{ border: '1.5px solid var(--color-error)', color: 'var(--color-error)' }}>
+          Log Out
+        </button>
+
+        {/* App credit */}
+        <p className="text-center text-[10px] pb-4" style={{ color: 'var(--color-text-muted)' }}>
+          BizChat · Made with 💜 by Doank
+        </p>
       </div>
 
-      <div className="px-4 py-6 text-center">
-        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>BizChat Business v1.0.0</p>
-      </div>
+      {/* Logout confirmation modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="glass-card p-6 w-full max-w-sm animate-scale-in">
+            <h3 className="text-base font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>Log Out?</h3>
+            <p className="text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>Are you sure you want to log out? You'll need to verify your phone number again.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-3 rounded-xl text-xs font-semibold"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text-primary)' }}>Cancel</button>
+              <button onClick={handleLogout}
+                className="flex-1 py-3 rounded-xl text-xs font-semibold text-white"
+                style={{ background: 'var(--color-error)' }}>Log Out</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
