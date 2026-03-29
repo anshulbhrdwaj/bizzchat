@@ -13,20 +13,55 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-// Auto-refresh on 401
+let isRefreshing = false;
+let failedQueue: { resolve: (token: string) => void; reject: (error: any) => void }[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401 && !error.config._retry) {
-      error.config._retry = true
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        }).catch(err => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
-        const { data } = await apiClient.post('/auth/refresh')
-        useAuthStore.getState().setAuth(data.user, data.accessToken)
-        error.config.headers.Authorization = `Bearer ${data.accessToken}`
-        return apiClient(error.config)
-      } catch {
+        const refreshToken = useAuthStore.getState().refreshToken;
+        if (!refreshToken) throw new Error('No refresh token available');
+        
+        const { data } = await axios.post(`${apiClient.defaults.baseURL}/auth/refresh`, { refreshToken });
+        useAuthStore.getState().setAuth(data.user, data.accessToken, data.refreshToken);
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        
+        processQueue(null, data.accessToken);
+        
+        return apiClient(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
         useAuthStore.getState().logout()
         window.location.href = '/auth'
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error)

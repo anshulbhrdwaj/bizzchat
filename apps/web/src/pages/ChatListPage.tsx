@@ -103,10 +103,10 @@ export default function ChatListPage() {
             <button
               key={chat.id}
               onClick={() => navigate(`/chats/${chat.id}`)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left active:bg-gray-100 transition-colors border-b border-gray-100"
+              className="w-full flex items-stretch text-left active:bg-gray-100 transition-colors bg-white mt-[1px]"
             >
               {/* Avatar */}
-              <div className="relative shrink-0">
+              <div className="relative shrink-0 pl-4 py-2.5 pr-3 flex items-center">
                 <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center overflow-hidden bg-gray-200">
                   {other.avatarUrl ? (
                     <img src={other.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -122,8 +122,7 @@ export default function ChatListPage() {
                 )}
               </div>
 
-              {/* Content */}
-              <div className="flex-1 min-w-0 py-0.5">
+              <div className="flex-1 min-w-0 py-3 pr-4 border-b border-gray-100 flex flex-col justify-center">
                 <div className="flex items-center justify-between gap-2 mb-0.5">
                   <span className={`text-[17px] truncate ${unread > 0 ? 'font-medium text-gray-900' : 'text-gray-900'}`}>
                     {other.name || other.phone}
@@ -133,7 +132,7 @@ export default function ChatListPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className={`text-[14px] truncate flex-1 ${unread > 0 ? 'text-gray-700' : 'text-gray-500'}`}>
+                  <p className={`text-[15px] truncate flex-1 leading-snug ${unread > 0 ? 'text-gray-700' : 'text-gray-500'}`}>
                     {lastMsg?.isDeleted
                       ? '🚫 This message was deleted'
                       : lastMsg?.type === 'TEXT'

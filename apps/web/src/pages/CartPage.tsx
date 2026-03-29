@@ -31,7 +31,44 @@ export default function CartPage() {
         await apiClient.put(`/cart/items/${itemId}`, { quantity })
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cart', businessId] }),
+    onMutate: async ({ itemId, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ['cart', businessId] })
+      const previousCart = queryClient.getQueryData(['cart', businessId])
+      const previousCartsAll = queryClient.getQueryData(['carts', 'all'])
+
+      queryClient.setQueryData(['cart', businessId], (old: any) => {
+        if (!old) return old
+        if (quantity === 0) {
+          return { ...old, items: old.items.filter((i: any) => i.id !== itemId) }
+        }
+        return {
+          ...old,
+          items: old.items.map((i: any) => i.id === itemId ? { ...i, quantity } : i)
+        }
+      })
+
+      if (previousCartsAll) {
+        queryClient.setQueryData(['carts', 'all'], (oldCarts: any) => {
+          if (!oldCarts) return oldCarts
+          return oldCarts.map((c: any) => {
+            if (c.businessId === businessId) {
+               if (quantity === 0) return { ...c, items: c.items.filter((i: any) => i.id !== itemId) }
+               return { ...c, items: c.items.map((i: any) => i.id === itemId ? { ...i, quantity } : i) }
+            }
+            return c
+          })
+        })
+      }
+      return { previousCart, previousCartsAll }
+    },
+    onError: (_err, _newTodo, context: any) => {
+      if (context?.previousCart) queryClient.setQueryData(['cart', businessId], context.previousCart)
+      if (context?.previousCartsAll) queryClient.setQueryData(['carts', 'all'], context.previousCartsAll)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart', businessId] })
+      queryClient.invalidateQueries({ queryKey: ['carts', 'all'] })
+    }
   })
 
   const placeOrder = async () => {

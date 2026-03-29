@@ -7,7 +7,7 @@ import { useOrderStore } from "@/stores/orderStore";
 let socket: Socket | null = null;
 
 export function initSocket(token: string) {
-  if (socket?.connected) return;
+  if (socket) return;
 
   socket = io(import.meta.env.VITE_SOCKET_URL || window.location.origin, {
     auth: { token },
@@ -23,9 +23,18 @@ export function initSocket(token: string) {
     // Optimistic reconciliation
     if (msg.senderId === myId) {
       const chatMsgs = store.messages[msg.chatId] || [];
-      const optimistic = chatMsgs.find(
-        (m: any) => m.isOptimistic && m.tempId && m.content === msg.content,
-      ) as any;
+      const tempIdFromMsg = (msg as any).metadata?.tempId;
+      
+      let optimistic: any = tempIdFromMsg 
+        ? chatMsgs.find((m: any) => (m as any).tempId === tempIdFromMsg)
+        : null;
+        
+      if (!optimistic) {
+        optimistic = chatMsgs.find(
+          (m: any) => (m as any).isOptimistic && (m as any).tempId && m.content === msg.content,
+        );
+      }
+
       if (optimistic && optimistic.tempId) {
         store.confirmOptimisticMessage(msg.chatId, optimistic.tempId, msg);
         store.updateChatPreview(msg.chatId, msg);

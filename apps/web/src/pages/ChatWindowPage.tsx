@@ -177,6 +177,7 @@ export default function ChatWindowPage() {
       content,
       type: 'TEXT',
       replyToId: replyTo?.id,
+      metadata: { tempId },
     })
 
     setTimeout(() => {

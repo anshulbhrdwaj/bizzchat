@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
+import apiClient from '@/lib/api'
 
 interface SettingsItem {
   icon: string
@@ -27,7 +28,15 @@ export default function SettingsPage() {
     localStorage.setItem('bizchat-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (refreshToken) {
+        await apiClient.post('/auth/logout', { refreshToken });
+      }
+    } catch {
+      // Ignore errors on logout
+    }
     logout()
     navigate('/auth')
   }

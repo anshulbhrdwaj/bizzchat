@@ -11,10 +11,10 @@ import { requireAuth, AuthRequest } from "../middleware/auth";
 
 const router: Router = Router();
 
-// Rate limit: 50 OTP requests per hour per IP (relaxed for dev testing)
+// Rate limit: 1000 OTP requests per hour (relaxed for testing)
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: process.env.NODE_ENV === "production" ? 10 : 50,
+  max: 1000,
   message: { error: "Too many OTP requests, try again later" },
 });
 

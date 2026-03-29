@@ -37,12 +37,18 @@ export const useChatStore = create<ChatStore>((set) => ({
   setActiveChat: (chat) => set({ activeChat: chat }),
 
   addMessage: (chatId, msg) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [chatId]: [...(state.messages[chatId] || []), msg],
-      },
-    })),
+    set((state) => {
+      const current = state.messages[chatId] || [];
+      if (current.some((m) => m.id === msg.id)) {
+        return state;
+      }
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: [...current, msg],
+        },
+      };
+    }),
 
   updateMessage: (chatId, msgId, updates) =>
     set((state) => ({
@@ -55,17 +61,28 @@ export const useChatStore = create<ChatStore>((set) => ({
     })),
 
   setMessages: (chatId, messages) =>
-    set((state) => ({
-      messages: { ...state.messages, [chatId]: messages },
-    })),
+    set((state) => {
+      const current = state.messages[chatId] || [];
+      const optimisticMsgs = current.filter(m => (m as any).isOptimistic);
+      const combined = [...messages, ...optimisticMsgs];
+      const unique = Array.from(new Map(combined.map(m => [m.id, m])).values());
+      return {
+        messages: { ...state.messages, [chatId]: unique },
+      };
+    }),
 
   appendMessages: (chatId, messages) =>
-    set((state) => ({
-      messages: {
-        ...state.messages,
-        [chatId]: [...messages, ...(state.messages[chatId] || [])],
-      },
-    })),
+    set((state) => {
+      const current = state.messages[chatId] || [];
+      const combined = [...messages, ...current];
+      const unique = Array.from(new Map(combined.map(m => [m.id, m])).values());
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: unique,
+        },
+      };
+    }),
 
   setTyping: (chatId, userId, isTyping) =>
     set((state) => {

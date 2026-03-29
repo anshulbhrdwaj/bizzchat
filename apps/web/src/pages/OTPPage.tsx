@@ -39,8 +39,7 @@ export default function OTPPage() {
           phone,
           code,
         });
-        setAuth(data.user, data.accessToken);
-        localStorage.setItem("bizchat-refresh", data.refreshToken);
+        setAuth(data.user, data.accessToken, data.refreshToken);
         if (data.isNewUser || !data.user.name) {
           navigate("/auth/profile", { replace: true });
         } else {
@@ -162,8 +161,8 @@ export default function OTPPage() {
               onKeyDown={(e) => handleKeyDown(i, e)}
               autoFocus={i === 0}
               disabled={loading}
-              className={`w-12 h-14 text-center text-xl font-bold rounded outline-none transition-all border-gray-400 border-2 
-                ${digit ? "border-[#128C7E]" : error ? "border-red-400" : "border-gray-400"} 
+              className={`w-12 h-14 text-center text-xl font-bold rounded outline-none transition-all border-2 border-solid
+                ${digit ? "border-[#128C7E]" : error ? "border-red-400" : "border-gray-300"} 
                 focus:border-[#128C7E] 
                 text-gray-900 bg-white`}
             />
