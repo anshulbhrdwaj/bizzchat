@@ -46,6 +46,41 @@ export function setupSocketHandlers(io: Server) {
     })
     await broadcastPresence(io, userId, true)
 
+    // Join all chat rooms for real-time background events (receipts, etc)
+    const memberships = await prisma.chatMember.findMany({
+      where: { userId },
+      select: { chatId: true }
+    })
+    for (const m of memberships) {
+      socket.join(`chat:${m.chatId}`)
+    }
+
+    // Automatically mark all undelivered messages to this user as delivered
+    const undeliveredMessages = await prisma.message.findMany({
+      where: {
+        chat: { members: { some: { userId } } },
+        senderId: { not: userId },
+        deliveredAt: null
+      },
+      select: { id: true, chatId: true }
+    });
+
+    if (undeliveredMessages.length > 0) {
+      await prisma.message.updateMany({
+        where: { id: { in: undeliveredMessages.map(m => m.id) } },
+        data: { deliveredAt: new Date() }
+      });
+
+      // Broadcast delivered status for all these messages
+      const nowStr = new Date().toISOString()
+      for (const msg of undeliveredMessages) {
+        io.to(`chat:${msg.chatId}`).emit('message:delivered', {
+          messageId: msg.id,
+          deliveredAt: nowStr
+        });
+      }
+    }
+
     // ─── Chat Room Management ───────────────────────
     socket.on('join:chat', (chatId: string) => {
       socket.join(`chat:${chatId}`)
@@ -53,6 +88,22 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('leave:chat', (chatId: string) => {
       socket.leave(`chat:${chatId}`)
+    })
+
+    // ─── Delivery Receipts ──────────────────────────
+    socket.on('message:delivered', async (data: { chatId: string; messageId: string }) => {
+      try {
+        await prisma.message.update({
+          where: { id: data.messageId },
+          data: { deliveredAt: new Date() },
+        })
+        socket.to(`chat:${data.chatId}`).emit('message:delivered', {
+          messageId: data.messageId,
+          deliveredAt: new Date().toISOString(),
+        })
+      } catch (error) {
+        logger.error('Socket message:delivered error', { error, userId })
+      }
     })
 
     // ─── Messages ───────────────────────────────────
@@ -71,7 +122,7 @@ export function setupSocketHandlers(io: Server) {
             type: data.type as any,
             content: data.content,
             replyToId: data.replyToId,
-            metadata: data.metadata,
+            metadata: data.metadata as any,
           },
           include: {
             sender: { select: { id: true, name: true, avatarUrl: true } },
@@ -89,13 +140,19 @@ export function setupSocketHandlers(io: Server) {
         // Notify chat list updates
         const members = await prisma.chatMember.findMany({
           where: { chatId: data.chatId },
-          select: { userId: true },
         })
-        for (const member of members) {
-          io.to(`user:${member.userId}`).emit('chat:updated', {
+        for (const m of members) {
+          const unreadCount = await prisma.message.count({
+            where: {
+              chatId: data.chatId,
+              createdAt: { gt: m.lastRead },
+              senderId: { not: m.userId },
+            },
+          })
+          io.to(`user:${m.userId}`).emit('chat:updated', {
             chatId: data.chatId,
             lastMessage: message,
-            unreadCount: 0, // TODO: Calculate properly
+            unreadCount,
           })
         }
       } catch (error) {
@@ -111,14 +168,54 @@ export function setupSocketHandlers(io: Server) {
         })
         await prisma.message.update({
           where: { id: data.messageId },
-          data: { readAt: new Date() },
+          data: { readAt: new Date(), deliveredAt: new Date() },
         })
         socket.to(`chat:${data.chatId}`).emit('message:read', {
           messageId: data.messageId,
           readAt: new Date().toISOString(),
+          deliveredAt: new Date().toISOString()
         })
       } catch (error) {
         logger.error('Socket message:read error', { error, userId })
+      }
+    })
+
+    socket.on('chat:read', async (data: { chatId: string }) => {
+      try {
+        const now = new Date()
+        const nowStr = now.toISOString()
+        
+        await prisma.chatMember.update({
+          where: { chatId_userId: { chatId: data.chatId, userId } },
+          data: { lastRead: now },
+        })
+
+        const unreadMsgs = await prisma.message.findMany({
+          where: {
+            chatId: data.chatId,
+            senderId: { not: userId },
+            readAt: null
+          },
+          select: { id: true }
+        })
+
+        if (unreadMsgs.length > 0) {
+          const ids = unreadMsgs.map(m => m.id)
+          await prisma.message.updateMany({
+            where: { id: { in: ids } },
+            data: { readAt: now, deliveredAt: now }
+          })
+          
+          for (const msg of unreadMsgs) {
+            socket.to(`chat:${data.chatId}`).emit('message:read', {
+              messageId: msg.id,
+              readAt: nowStr,
+              deliveredAt: nowStr
+            })
+          }
+        }
+      } catch (error) {
+        logger.error('Socket chat:read error', { error, userId })
       }
     })
 

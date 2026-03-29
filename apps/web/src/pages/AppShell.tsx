@@ -1,295 +1,479 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
-import { useCartStore } from '@/stores/cartStore'
-import { useState } from 'react'
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/api";
+import { useState } from "react";
 
-// ─── Icon Components ─────────────────────────────────────
+// ─── Icon Components (WhatsApp colors) ───────────────────
+const IC_ACTIVE = "#128C7E";
+const IC_INACTIVE = "#8696A0";
+const IC_FILL = "rgba(18,140,126,0.08)";
+
 function ChatIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0034 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92176 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.9C9.87812 3.30493 11.1801 2.99656 12.5 3H13C15.0843 3.11499 17.053 3.99476 18.5291 5.47086C20.0052 6.94696 20.885 8.91568 21 11V11.5Z"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <path
+        d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0034 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92176 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.9C9.87812 3.30493 11.1801 2.99656 12.5 3H13C15.0843 3.11499 17.053 3.99476 18.5291 5.47086C20.0052 6.94696 20.885 8.91568 21 11V11.5Z"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
     </svg>
-  )
+  );
+}
+
+function ContactsIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <path
+        d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <path
+        d="M18 20V19C18 16.24 13.5 15 12 15C10.5 15 6 16.24 6 19V20"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function CatalogIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
-      <path d="M3 6H21" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-      <path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <path
+        d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <path d="M3 6H21" stroke={active ? IC_ACTIVE : IC_INACTIVE} />
+      <path
+        d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+      />
     </svg>
-  )
+  );
 }
 
 function CartIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <circle cx="9" cy="21" r="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary)' : 'none'} />
-      <circle cx="20" cy="21" r="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary)' : 'none'} />
-      <path d="M1 1H5L7.68 14.39C7.77 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2088 16.009 9.67 16H19.4C19.8612 16.009 20.3168 15.8526 20.6825 15.5583C21.0481 15.264 21.3 14.8504 21.39 14.39L23 6H6"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <circle
+        cx="9"
+        cy="21"
+        r="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_ACTIVE : "none"}
+      />
+      <circle
+        cx="20"
+        cy="21"
+        r="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_ACTIVE : "none"}
+      />
+      <path
+        d="M1 1H5L7.68 14.39C7.77 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2088 16.009 9.67 16H19.4C19.8612 16.009 20.3168 15.8526 20.6825 15.5583C21.0481 15.264 21.3 14.8504 21.39 14.39L23 6H6"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+      />
     </svg>
-  )
+  );
 }
 
 function OrdersIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <path d="M16.5 9.4L7.55 4.24" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-      <path d="M21 16V8C20.9996 7.6493 20.9071 7.30483 20.7315 7.00017C20.556 6.69552 20.3037 6.44093 20 6.26L13 2.26C12.696 2.07926 12.3511 1.98413 12 1.98413C11.6489 1.98413 11.304 2.07926 11 2.26L4 6.26C3.69626 6.44093 3.44398 6.69552 3.26846 7.00017C3.09294 7.30483 3.00036 7.6493 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9998C3.44398 17.3045 3.69626 17.5591 4 17.74L11 21.74C11.304 21.9207 11.6489 22.0159 12 22.0159C12.3511 22.0159 12.696 21.9207 13 21.74L20 17.74C20.3037 17.5591 20.556 17.3045 20.7315 16.9998C20.9071 16.6952 20.9996 16.3507 21 16Z"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
-      <path d="M3.27 6.96L12 12.01L20.73 6.96" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-      <path d="M12 22.08V12" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <path d="M16.5 9.4L7.55 4.24" stroke={active ? IC_ACTIVE : IC_INACTIVE} />
+      <path
+        d="M21 16V8C20.9996 7.6493 20.9071 7.30483 20.7315 7.00017C20.556 6.69552 20.3037 6.44093 20 6.26L13 2.26C12.696 2.07926 12.3511 1.98413 12 1.98413C11.6489 1.98413 11.304 2.07926 11 2.26L4 6.26C3.69626 6.44093 3.44398 6.69552 3.26846 7.00017C3.09294 7.30483 3.00036 7.6493 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9998C3.44398 17.3045 3.69626 17.5591 4 17.74L11 21.74C11.304 21.9207 11.6489 22.0159 12 22.0159C12.3511 22.0159 12.696 21.9207 13 21.74L20 17.74C20.3037 17.5591 20.556 17.3045 20.7315 16.9998C20.9071 16.6952 20.9996 16.3507 21 16Z"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <path
+        d="M3.27 6.96L12 12.01L20.73 6.96"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+      />
+      <path d="M12 22.08V12" stroke={active ? IC_ACTIVE : IC_INACTIVE} />
     </svg>
-  )
+  );
 }
 
 function DashboardIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <rect x="3" y="3" width="7" height="7" rx="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
-      <rect x="14" y="3" width="7" height="4" rx="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
-      <rect x="14" y="10" width="7" height="11" rx="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
-      <rect x="3" y="13" width="7" height="8" rx="1" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} fill={active ? 'var(--color-primary-light)' : 'none'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <rect
+        x="3"
+        y="3"
+        width="7"
+        height="7"
+        rx="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <rect
+        x="14"
+        y="3"
+        width="7"
+        height="4"
+        rx="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <rect
+        x="14"
+        y="10"
+        width="7"
+        height="11"
+        rx="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
+      <rect
+        x="3"
+        y="13"
+        width="7"
+        height="8"
+        rx="1"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+        fill={active ? IC_FILL : "none"}
+      />
     </svg>
-  )
+  );
 }
 
 function SettingsIcon({ active }: { active: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth={active ? "2" : "1.5"}>
-      <circle cx="12" cy="12" r="3" stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
-      <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.988C9.5799 19.718 9.31074 19.5117 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.01198 9.77251C4.28197 9.5799 4.48827 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z"
-        stroke={active ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth={active ? "2" : "1.5"}
+    >
+      <circle cx="12" cy="12" r="3" stroke={active ? IC_ACTIVE : IC_INACTIVE} />
+      <path
+        d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.988C9.5799 19.718 9.31074 19.5117 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.01198 9.77251C4.28197 9.5799 4.48827 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z"
+        stroke={active ? IC_ACTIVE : IC_INACTIVE}
+      />
     </svg>
-  )
+  );
 }
 
 // ─── Tab Navigation Data ─────────────────────────────────
 interface NavTab {
-  icon: React.FC<{ active: boolean }>
-  label: string
-  path: string
-  match: string[]
-  businessOnly?: boolean
+  icon: React.FC<{ active: boolean }>;
+  label: string;
+  path: string;
+  match: string[];
+  businessOnly?: boolean;
 }
 
 const NAV_TABS: NavTab[] = [
-  { icon: ChatIcon, label: 'Chats', path: '/chats', match: ['/chats'] },
-  { icon: CatalogIcon, label: 'Catalog', path: '/catalog', match: ['/catalog'] },
-  { icon: CartIcon, label: 'Cart', path: '/cart', match: ['/cart'] },
-  { icon: OrdersIcon, label: 'Orders', path: '/orders', match: ['/orders'] },
-  { icon: DashboardIcon, label: 'Dashboard', path: '/dashboard', match: ['/dashboard'], businessOnly: true },
-]
+  { icon: ChatIcon, label: "Chats", path: "/chats", match: ["/chats"] },
+  // { icon: ContactsIcon, label: 'Contacts', path: '/contacts', match: ['/contacts'] },
+  // { icon: CatalogIcon, label: 'Catalog', path: '/catalog', match: ['/catalog'] },
+  { icon: CartIcon, label: "Cart", path: "/cart", match: ["/cart"] },
+  { icon: OrdersIcon, label: "Orders", path: "/orders", match: ["/orders"] },
+  {
+    icon: DashboardIcon,
+    label: "Dashboard",
+    path: "/dashboard",
+    match: ["/dashboard"],
+    businessOnly: true,
+  },
+];
 
 // ─── AppShell ────────────────────────────────────────────
 export default function AppShell() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const user = useAuthStore(s => s.user)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Check which tab is active
-  const isActive = (tab: NavTab) => tab.match.some(m => location.pathname.startsWith(m))
+  const isActive = (tab: NavTab) =>
+    tab.match.some((m) => location.pathname.startsWith(m));
 
-  // Cart badge count
-  const carts = useCartStore(s => s.carts)
-  const totalCartItems = Object.values(carts).reduce(
-    (sum, cart) => sum + cart.items.reduce((s, i) => s + i.quantity, 0), 0
-  )
+  // Cart badge count using react-query
+  const { data: carts } = useQuery({
+    queryKey: ['carts', 'all'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/cart/all');
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const totalCartItems = carts?.reduce(
+    (sum: number, cart: any) => sum + cart.items.reduce((s: number, i: any) => s + i.quantity, 0),
+    0,
+  ) || 0;
 
   const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : '?'
+    ? user.name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "?";
 
   // Hide bottom nav on chat window (full-screen)
-  const isFullScreenView = location.pathname.match(/^\/chats\/[^/]+$/)
+  const isFullScreenView = location.pathname.match(/^\/chats\/[^/]+$/);
 
   return (
-    <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--color-background)' }}>
+    <div className="flex flex-col md:flex-row h-dvh overflow-hidden bg-[#F0F2F5]">
       {/* ─── Desktop Icon Strip (≥1024px) ─────────────── */}
-      <aside className="hidden lg:flex flex-col w-[60px] border-r py-4 items-center"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--glass-border)' }}>
+      <aside className="hidden lg:flex flex-col w-[60px] border-r border-gray-200 py-4 items-center bg-white">
         {/* Logo */}
-        <button onClick={() => navigate('/chats')}
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-6"
-          style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))' }}>
+        <button
+          onClick={() => navigate("/chats")}
+          className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 bg-[#128C7E]"
+        >
           <span className="text-white font-bold text-lg">B</span>
         </button>
 
         {/* Nav icons */}
         <nav className="flex-1 flex flex-col items-center gap-1">
-          {NAV_TABS.map(tab => {
-            const active = isActive(tab)
+          {NAV_TABS.map((tab) => {
+            const active = isActive(tab);
             return (
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
-                className="relative w-11 h-11 rounded-xl flex items-center justify-center transition-all touch-target"
-                style={{
-                  background: active ? 'var(--color-primary-light)' : 'transparent',
-                }}
+                className="relative w-11 h-11 flex items-center justify-center transition-all touch-target"
                 title={tab.label}
               >
                 <tab.icon active={active} />
-                {tab.label === 'Cart' && totalCartItems > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 animate-badge-bounce"
-                    style={{ background: 'var(--color-error)' }}>
-                    {totalCartItems > 99 ? '99+' : totalCartItems}
+                {tab.label === "Cart" && totalCartItems > 0 && (
+                  <span
+                    className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 animate-badge-bounce"
+                    style={{ background: "#EA0038" }}
+                  >
+                    {totalCartItems > 99 ? "99+" : totalCartItems}
                   </span>
                 )}
               </button>
-            )
+            );
           })}
         </nav>
 
         {/* Bottom: Settings + Profile */}
         <div className="flex flex-col items-center gap-2 mt-auto">
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate("/settings")}
             className="w-11 h-11 rounded-xl flex items-center justify-center transition-all touch-target"
-            style={{ background: location.pathname === '/settings' ? 'var(--color-primary-light)' : 'transparent' }}
+            style={{
+              background:
+                location.pathname === "/settings"
+                  ? "rgba(18,140,126,0.08)"
+                  : "transparent",
+            }}
             title="Settings"
           >
-            <SettingsIcon active={location.pathname === '/settings'} />
+            <SettingsIcon active={location.pathname === "/settings"} />
           </button>
           <button
-            onClick={() => navigate('/settings')}
-            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden"
-            style={{
-              background: user?.avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))',
-              border: '2px solid var(--color-primary-light)',
-            }}
+            onClick={() => navigate("/settings")}
+            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-200"
+            style={{ background: user?.avatarUrl ? "transparent" : "#F0F2F5" }}
           >
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <span className="text-[10px] font-bold text-white">{initials}</span>
+              <span className="text-[10px] font-bold text-gray-900">
+                {initials}
+              </span>
             )}
           </button>
         </div>
       </aside>
 
       {/* ─── Tablet Sidebar (768-1023px) ──────────────── */}
-      <aside className={`hidden md:flex lg:hidden flex-col border-r py-4 transition-all duration-300 ${sidebarCollapsed ? 'w-[60px]' : 'w-[200px]'}`}
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--glass-border)' }}>
+      <aside
+        className={`hidden md:flex lg:hidden flex-col border-r border-gray-200 py-4 transition-all duration-300 bg-white ${sidebarCollapsed ? "w-[60px]" : "w-[200px]"}`}
+      >
         {/* Header */}
         <div className="flex items-center gap-2 px-3 mb-4">
-          <button onClick={() => navigate('/chats')}
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))' }}>
+          <button
+            onClick={() => navigate("/chats")}
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#128C7E]"
+          >
             <span className="text-white font-bold text-sm">B</span>
           </button>
           {!sidebarCollapsed && (
-            <span className="text-sm font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>BizChat</span>
+            <span className="text-sm font-bold truncate text-gray-900">
+              BizChat
+            </span>
           )}
-          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-            style={{ color: 'var(--color-text-muted)' }}>
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="ml-auto w-7 h-7 rounded-lg flex items-center justify-center transition-colors text-gray-500"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d={sidebarCollapsed ? "M6 3L11 8L6 13" : "M10 3L5 8L10 13"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path
+                d={sidebarCollapsed ? "M6 3L11 8L6 13" : "M10 3L5 8L10 13"}
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
 
         <nav className="flex-1 flex flex-col gap-0.5 px-2">
-          {NAV_TABS.map(tab => {
-            const active = isActive(tab)
+          {NAV_TABS.map((tab) => {
+            const active = isActive(tab);
             return (
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
-                className={`relative flex items-center gap-3 rounded-xl transition-all touch-target ${sidebarCollapsed ? 'justify-center px-0 h-11' : 'px-3 h-11'}`}
+                className={`relative flex items-center gap-3 transition-all touch-target ${sidebarCollapsed ? "justify-center px-0 h-11" : "px-3 h-11"}`}
                 style={{
-                  background: active ? 'var(--color-primary-light)' : 'transparent',
-                  color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  background: active
+                    ? "rgba(18, 140, 126, 0.1)"
+                    : "transparent",
+                  color: active ? "#128C7E" : "#8696A0",
+                  borderRadius: "12px",
                 }}
               >
                 <div className="relative shrink-0">
                   <tab.icon active={active} />
-                  {tab.label === 'Cart' && totalCartItems > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-bold text-white px-0.5"
-                      style={{ background: 'var(--color-error)' }}>
-                      {totalCartItems > 99 ? '99+' : totalCartItems}
+                  {tab.label === "Cart" && totalCartItems > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full flex items-center justify-center text-[9px] font-bold text-white px-0.5"
+                      style={{ background: "#EA0038" }}
+                    >
+                      {totalCartItems > 99 ? "99+" : totalCartItems}
                     </span>
                   )}
                 </div>
                 {!sidebarCollapsed && (
-                  <span className={`text-xs truncate ${active ? 'font-semibold' : 'font-medium'}`}>
+                  <span
+                    className={`text-xs truncate ${active ? "font-semibold" : "font-medium"}`}
+                  >
                     {tab.label}
                   </span>
                 )}
               </button>
-            )
+            );
           })}
         </nav>
 
         {/* Profile */}
-        <div className={`px-2 mt-auto flex items-center gap-2 ${sidebarCollapsed ? 'justify-center' : ''}`}>
-          <button onClick={() => navigate('/settings')}
-            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden shrink-0"
-            style={{
-              background: user?.avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))',
-              border: '2px solid var(--color-primary-light)',
-            }}>
+        <div
+          className={`px-2 mt-auto flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}
+        >
+          <button
+            onClick={() => navigate("/settings")}
+            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden shrink-0 border-2 border-gray-200"
+            style={{ background: user?.avatarUrl ? "transparent" : "#F0F2F5" }}
+          >
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <span className="text-[10px] font-bold text-white">{initials}</span>
+              <span className="text-[10px] font-bold text-gray-900">
+                {initials}
+              </span>
             )}
           </button>
           {!sidebarCollapsed && (
             <div className="truncate">
-              <p className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{user?.name || 'User'}</p>
-              <p className="text-[10px] truncate" style={{ color: 'var(--color-text-muted)' }}>{user?.phone}</p>
+              <p className="text-xs font-semibold truncate text-gray-900">
+                {user?.name || "User"}
+              </p>
+              <p className="text-[10px] truncate text-gray-500">
+                {user?.phone}
+              </p>
             </div>
           )}
         </div>
       </aside>
 
       {/* ─── Main Content ─────────────────────────────── */}
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
         <Outlet />
       </main>
 
       {/* ─── Mobile Bottom Tab Bar (<768px) ────────────── */}
       {!isFullScreenView && (
-        <nav className="md:hidden glass-nav safe-area-bottom fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2"
-          style={{ height: '64px', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
-          {NAV_TABS.map(tab => {
-            const active = isActive(tab)
+        <nav className="md:hidden flex-none w-full flex items-center justify-around px-2 bg-white border-t border-gray-200 shrink-0 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 h-[calc(56px+env(safe-area-inset-bottom))]">
+          {NAV_TABS.map((tab) => {
+            const active = isActive(tab);
             return (
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
                 className="relative flex flex-col items-center justify-center gap-0.5 touch-target transition-all"
-                style={{ minWidth: '56px', minHeight: '44px' }}
+                style={{ minWidth: "56px", minHeight: "44px" }}
               >
                 <div className="relative">
                   <tab.icon active={active} />
-                  {tab.label === 'Cart' && totalCartItems > 0 && (
-                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 animate-badge-bounce"
-                      style={{ background: 'var(--color-error)' }}>
-                      {totalCartItems > 99 ? '99+' : totalCartItems}
+                  {tab.label === "Cart" && totalCartItems > 0 && (
+                    <span
+                      className="absolute -top-1 -right-2 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1 animate-badge-bounce"
+                      style={{ background: "#EA0038" }}
+                    >
+                      {totalCartItems > 99 ? "99+" : totalCartItems}
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] ${active ? 'font-bold' : 'font-medium'}`}
-                  style={{ color: active ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                <span
+                  className={`text-[10px] ${active ? "font-bold text-[#128C7E]" : "font-medium text-gray-500"}`}
+                >
                   {tab.label}
                 </span>
-                {active && (
-                  <div className="absolute -top-1 w-5 h-0.5 rounded-full" style={{ background: 'var(--color-primary)' }} />
-                )}
               </button>
-            )
+            );
           })}
         </nav>
       )}
     </div>
-  )
+  );
 }

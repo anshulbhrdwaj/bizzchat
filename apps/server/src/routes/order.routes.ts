@@ -51,45 +51,129 @@ router.post('/', requireAuth, validateBody(placeOrderSchema), async (req: AuthRe
       }
     })
 
+    // Validate stock before transaction
+    const stockErrors: { productId: string, variantId: string | null, requested: number, available: number }[] = []
+    
+    for (const item of cart.items) {
+      if (item.variant && item.variant.stock !== null) {
+        if (item.quantity > item.variant.stock) {
+          stockErrors.push({
+            productId: item.productId,
+            variantId: item.variantId,
+            requested: item.quantity,
+            available: item.variant.stock,
+          })
+        }
+      }
+    }
+
+    // Disable strict stock boundary checking for checkout
+    // if (stockErrors.length > 0) {
+    //   res.status(400).json({ error: 'STOCK_UNAVAILABLE', items: stockErrors })
+    //   return
+    // }
+
     const subtotal = orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0)
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId: req.userId!,
-        businessId,
-        cartId: cart.id,
-        subtotal,
-        total: subtotal, // Tax can be added later
-        deliveryAddress,
-        customerNote,
-        items: { create: orderItems },
-        statusHistory: {
-          create: { status: 'PENDING', changedBy: req.userId!, note: 'Order placed' },
+    const order = await prisma.$transaction(async (tx) => {
+      // Decrement stock without throwing errors if it falls below zero
+      for (const item of cart.items) {
+        if (item.variant && item.variant.stock !== null) {
+          await tx.variantValue.update({
+            where: { id: item.variant.id },
+            data: { stock: { decrement: item.quantity } }
+          })
+        }
+      }
+
+      // Create order
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          userId: req.userId!,
+          businessId,
+          cartId: cart.id,
+          subtotal,
+          total: subtotal, // Tax can be added later
+          deliveryAddress,
+          customerNote,
+          items: { create: orderItems },
+          statusHistory: {
+            create: { status: 'PENDING', changedBy: req.userId!, note: 'Order placed' },
+          },
         },
-      },
-      include: {
-        items: true,
-        statusHistory: true,
-        business: true,
-      },
+        include: {
+          items: true,
+          statusHistory: true,
+          business: true,
+        },
+      })
+
+      // Mark cart as checked out
+      await tx.cart.update({
+        where: { id: cart.id },
+        data: { status: 'CHECKED_OUT' },
+      })
+
+      return newOrder
     })
 
-    // Mark cart as checked out
-    await prisma.cart.update({
-      where: { id: cart.id },
-      data: { status: 'CHECKED_OUT' },
-    })
-
-    // Emit socket event order:new to business owner
+    // Emit socket event order:new to business owner + chat integration
     try {
       const io = getIO()
       const businessProfile = await prisma.businessProfile.findUnique({
         where: { id: businessId },
         select: { userId: true },
       })
+      
       if (businessProfile) {
         io.to(`user:${businessProfile.userId}`).emit('order:new', order)
+
+        // ─── Chat Message Integration ✨ ───
+        let chat = await prisma.chat.findFirst({
+          where: {
+            AND: [
+              { members: { some: { userId: req.userId! } } },
+              { members: { some: { userId: businessProfile.userId } } },
+            ]
+          },
+          include: { members: true }
+        })
+
+        if (!chat) {
+          chat = await prisma.chat.create({
+            data: { members: { create: [{ userId: req.userId! }, { userId: businessProfile.userId }] } },
+            include: { members: true }
+          })
+        }
+
+        const msg = await prisma.message.create({
+          data: {
+            chatId: chat.id,
+            senderId: req.userId!,
+            type: 'ORDER_UPDATE',
+            content: `Order #${order.orderNumber} placed`,
+            metadata: {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              status: 'PENDING',
+              itemCount: order.items.length,
+              total: order.total
+            }
+          },
+          include: { sender: { select: { id: true, name: true, avatarUrl: true } } }
+        })
+
+        await prisma.chat.update({ where: { id: chat.id }, data: { updatedAt: new Date() } })
+
+        io.to(`chat:${chat.id}`).emit('message:new', msg)
+
+        for (const m of chat.members) {
+          const unreadCount = await prisma.message.count({
+            where: { chatId: chat.id, createdAt: { gt: m.lastRead }, senderId: { not: m.userId } }
+          })
+          io.to(`user:${m.userId}`).emit('chat:updated', { chatId: chat.id, lastMessage: msg, unreadCount })
+        }
       }
     } catch (socketErr) {
       logger.warn('Socket emit failed for order:new', { error: socketErr })

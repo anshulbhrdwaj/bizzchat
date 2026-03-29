@@ -1,75 +1,111 @@
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens (CLAUDE.md Section 3.1) ──────────── */
+/* ─── WhatsApp Business Design Tokens ─────────────────── */
 :root {
-  /* Brand */
-  --color-primary: #5B3FD9;
-  --color-primary-mid: #7B5FE8;
-  --color-primary-light: #EDE9FF;
-  --color-accent-cyan: #0891B2;
+  /* WhatsApp Brand Colors */
+  --wa-teal-dark: #075e54;
+  --wa-teal: #128c7e;
+  --wa-green: #25d366;
+  --wa-light-green: #dcf8c6;
+  --wa-blue: #34b7f1;
+  --wa-red: #ea0038;
 
-  /* Surfaces */
-  --color-background: #FFFFFF;
-  --color-surface: #F9FAFB;
-  --color-surface-elevated: #FFFFFF;
+  /* Surfaces (Light) */
+  --color-background: #f0f2f5;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f0f2f5;
+  --color-chat-bg: #efeae2;
+  --color-divider: #e9edef;
 
   /* Text */
-  --color-text-primary: #111827;
-  --color-text-body: #374151;
-  --color-text-muted: #6B7280;
+  --color-text-primary: #111b21;
+  --color-text-body: #3b4a54;
+  --color-text-muted: #667781;
 
   /* Chat Bubbles */
-  --bubble-outgoing-bg: rgba(91, 63, 217, 0.85);
-  --bubble-outgoing-text: #FFFFFF;
-  --bubble-incoming-bg: rgba(255, 255, 255, 0.75);
-  --bubble-incoming-text: #111827;
-  --bubble-border: rgba(91, 63, 217, 0.15);
+  --bubble-outgoing-bg: #d9fdd3;
+  --bubble-outgoing-text: #111b21;
+  --bubble-incoming-bg: #ffffff;
+  --bubble-incoming-text: #111b21;
 
-  /* Status Colors */
-  --color-success: #059669;
-  --color-warning: #D97706;
-  --color-error: #DC2626;
-  --color-info: #0891B2;
-
-  /* Glass Effects */
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.8);
-  --glass-blur: blur(12px);
-  --glass-shadow: 0 4px 24px rgba(91, 63, 217, 0.08);
-
-  /* Spacing Scale */
-  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
-  --space-4: 16px; --space-5: 20px; --space-6: 24px;
-  --space-8: 32px; --space-10: 40px; --space-12: 48px;
-
-  /* Border Radius */
-  --radius-sm: 6px;   --radius-md: 12px;  --radius-lg: 16px;
-  --radius-xl: 24px;  --radius-full: 9999px;
-
-  /* Transitions */
-  --transition-fast: 150ms ease-out;
-  --transition-base: 200ms ease-out;
-  --transition-slow: 300ms ease;
-  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Legacy aliases (for any remaining references) */
+  --color-primary: #128c7e;
+  --color-primary-mid: #075e54;
+  --color-primary-light: rgba(18, 140, 126, 0.08);
+  --color-success: #25d366;
+  --color-warning: #f1c40f;
+  --color-error: #ea0038;
+  --color-info: #34b7f1;
+  --glass-bg: #ffffff;
+  --glass-border: #e9edef;
+  --glass-border-dark: rgba(0, 0, 0, 0.08);
 }
 
-/* ─── Dark Mode Variables (CLAUDE.md Section 3.1) ─────── */
+/* ─── Dark Mode ───────────────────────────────────────── */
 .dark {
-  --color-background: #0F0B1A;
-  --color-surface: #1A1428;
-  --color-surface-elevated: #221B35;
-  --color-text-primary: #F9FAFB;
-  --color-text-body: #E5E7EB;
-  --color-text-muted: #9CA3AF;
-  --glass-bg: rgba(26, 20, 40, 0.7);
-  --glass-border: rgba(91, 63, 217, 0.2);
-  --bubble-incoming-bg: rgba(34, 27, 53, 0.85);
-  --bubble-incoming-text: #F9FAFB;
+  /* WhatsApp Brand Colors */
+  --wa-teal-dark: #075e54;
+  --wa-teal: #128c7e;
+  --wa-green: #25d366;
+  --wa-light-green: #dcf8c6;
+  --wa-blue: #34b7f1;
+  --wa-red: #ea0038;
+
+  /* Surfaces (Light) */
+  --color-background: #f0f2f5;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f0f2f5;
+  --color-chat-bg: #efeae2;
+  --color-divider: #e9edef;
+
+  /* Text */
+  --color-text-primary: #111b21;
+  --color-text-body: #3b4a54;
+  --color-text-muted: #667781;
+
+  /* Chat Bubbles */
+  --bubble-outgoing-bg: #d9fdd3;
+  --bubble-outgoing-text: #111b21;
+  --bubble-incoming-bg: #ffffff;
+  --bubble-incoming-text: #111b21;
+
+  /* Legacy aliases (for any remaining references) */
+  --color-primary: #128c7e;
+  --color-primary-mid: #075e54;
+  --color-primary-light: rgba(18, 140, 126, 0.08);
+  --color-success: #25d366;
+  --color-warning: #f1c40f;
+  --color-error: #ea0038;
+  --color-info: #34b7f1;
+  --glass-bg: #ffffff;
+  --glass-border: #e9edef;
+  --glass-border-dark: rgba(0, 0, 0, 0.08);
+  /* --wa-teal-dark: #1F2C34;
+  --wa-teal: #00A884;
+  --wa-green: #00A884;
+
+  --color-background: #111B21;
+  --color-surface: #202C33;
+  --color-surface-elevated: #2A3942;
+  --color-chat-bg: #0B141A;
+  --color-divider: #313D45;
+
+  --color-text-primary: #E9EDEF;
+  --color-text-body: #D1D7DB;
+  --color-text-muted: #8696A0;
+
+  --bubble-outgoing-bg: #005C4B;
+  --bubble-outgoing-text: #E9EDEF;
+  --bubble-incoming-bg: #202C33;
+  --bubble-incoming-text: #E9EDEF;
+
+  --color-primary: #00A884;
+  --color-primary-mid: #008069;
+  --color-primary-light: rgba(0, 168, 132, 0.08);
+  --glass-bg: #202C33;
+  --glass-border: #313D45; */
 }
 
 /* ─── Base Styles ─────────────────────────────────────── */
@@ -77,12 +113,18 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
-  font-family: 'Geist Variable', system-ui, sans-serif;
+  /* WhatsApp uses system fonts — Helvetica Neue / SF Pro on iOS, Roboto on Android */
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.4;
 }
 
 body {
@@ -90,131 +132,177 @@ body {
   color: var(--color-text-primary);
   min-height: 100vh;
   min-height: 100dvh;
+  overflow: hidden;
 }
 
-/* ─── Glassmorphism Utilities (Section 3.3) ───────────── */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  border: none;
+  outline: none;
 }
 
+/* ─── WhatsApp Utility Classes ────────────────────────── */
 .glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--glass-shadow);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
+  border-radius: 0;
 }
 
 .glass-nav {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--glass-border);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-divider);
 }
 
-.dark .glass-nav {
-  background: rgba(15, 11, 26, 0.85);
-}
-
-/* ─── Mesh Background ─────────────────────────────────── */
-.mesh-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(91, 63, 217, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(8, 145, 178, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 80%, rgba(123, 95, 232, 0.05) 0%, transparent 50%);
-}
-
-.dark .mesh-bg {
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(91, 63, 217, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(8, 145, 178, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 80%, rgba(123, 95, 232, 0.08) 0%, transparent 50%);
-}
-
-/* ─── Safe Area for Mobile ────────────────────────────── */
+/* ─── Safe Area ───────────────────────────────────────── */
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
-
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
 
-/* ─── Scrollbar Styling ───────────────────────────────── */
+/* ─── Scrollbar (WhatsApp thin style) ─────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(91, 63, 217, 0.2);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(91, 63, 217, 0.4);
+  background: rgba(0, 0, 0, 0.25);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* ─── Focus Rings ─────────────────────────────────────── */
+/* ─── Focus ───────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: none;
 }
 
-/* ─── Touch Targets ───────────────────────────────────── */
+/* ─── Touch Targets (Apple HIG minimum) ───────────────── */
 .touch-target {
   min-width: 44px;
   min-height: 44px;
 }
 
-/* ─── Animations (CLAUDE.md Section 6) ────────────────── */
-@keyframes scale-in {
-  from { transform: scale(0.85); opacity: 0; }
-  to   { transform: scale(1);    opacity: 1; }
+/* ─── Animations (subtle, WhatsApp-like) ──────────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes fade-up {
-  from { transform: translateY(12px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
-@keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(91, 63, 217, 0.4); }
-  70%  { box-shadow: 0 0 0 10px rgba(91, 63, 217, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(91, 63, 217, 0); }
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
-@keyframes shimmer {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(100%); }
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
-.animate-scale-in   { animation: scale-in 250ms var(--transition-spring) forwards; }
-.animate-fade-up    { animation: fade-up 300ms ease-out forwards; }
-.animate-fade-in    { animation: fade-in 200ms ease-out forwards; }
-.animate-pulse-ring { animation: pulse-ring 1.5s infinite; }
+.animate-fade-in {
+  animation: fade-in 150ms ease-out forwards;
+}
+.animate-fade-up {
+  animation: fade-up 200ms ease-out forwards;
+}
+.animate-scale-in {
+  animation: scale-in 200ms ease-out forwards;
+}
+.animate-slide-in-right {
+  animation: slide-in-right 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.animate-slide-up {
+  animation: slide-up 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.animate-page-enter {
+  animation: fade-in 150ms ease-out forwards;
+}
+
+/* WhatsApp uses minimal, subtle press feedback — no dramatic scale */
+button:not(:disabled):active {
+  opacity: 0.7;
+  transition: opacity 50ms ease;
+}
+
+/* ─── No Scrollbar (horizontal tab bars) ──────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* ─── Selection ───────────────────────────────────────── */
 ::selection {
-  background: rgba(91, 63, 217, 0.2);
+  background: rgba(18, 140, 126, 0.2);
   color: var(--color-text-primary);
 }
 
-/* ─── Input placeholder ───────────────────────────────── */
+/* ─── Placeholder ─────────────────────────────────────── */
 ::placeholder {
   color: var(--color-text-muted);
-  opacity: 0.7;
+  opacity: 0.8;
 }
+
+/* ─── Badge bounce ─────────────────────────────────────── */
+@keyframes badge-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.animate-badge-bounce {
+  animation: badge-bounce 0.4s ease-out;
+}
+
+/* ─── Textarea helpers ─────────────────────────────────── */
+textarea {
+  resize: none;
+}
+

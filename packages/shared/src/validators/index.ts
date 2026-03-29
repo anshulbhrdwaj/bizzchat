@@ -90,7 +90,7 @@ export const updateVariantValueSchema = z.object({
 
 export const addCartItemSchema = z.object({
   productId: z.string(),
-  variantId: z.string().optional(),
+  variantId: z.string().nullable().optional(),
   quantity: z.number().int().positive(),
   businessId: z.string(),
 })

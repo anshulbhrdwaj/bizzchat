@@ -20,10 +20,7 @@ export default function ProfileSetupPage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB')
-      return
-    }
+    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return }
     setAvatar(file)
     setAvatarPreview(URL.createObjectURL(file))
     setError('')
@@ -31,30 +28,23 @@ export default function ProfileSetupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) {
-      setError('Name is required')
-      return
-    }
+    if (!name.trim()) { setError('Name is required'); return }
     setLoading(true)
     setError('')
     try {
-      // Upload avatar if selected
       let avatarUrl = user?.avatarUrl
       if (avatar) {
         const formData = new FormData()
-        formData.append('file', avatar)
-        formData.append('type', 'avatar')
+        formData.append('avatar', avatar)
         try {
-          const { data } = await apiClient.post('/upload', formData, {
+          const { data } = await apiClient.post('/users/me/avatar', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           })
           avatarUrl = data.url
-        } catch {
-          // Avatar upload failed, continue without
+        } catch (e: any) {
+          console.error("Avatar upload failed:", e.response?.data?.error || e.message)
         }
       }
-
-      // Update user profile
       await apiClient.put('/users/me', { name: name.trim(), avatarUrl })
       updateUser({ name: name.trim(), avatarUrl })
       navigate('/', { replace: true })
@@ -70,143 +60,65 @@ export default function ProfileSetupPage() {
     : '?'
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-6 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 -z-10" style={{
-        background: `
-          radial-gradient(ellipse at 30% 20%, rgba(91, 63, 217, 0.25) 0%, transparent 50%),
-          radial-gradient(ellipse at 70% 80%, rgba(123, 95, 232, 0.2) 0%, transparent 50%),
-          var(--color-background)
-        `
-      }} />
-
-      <div className="w-full max-w-sm animate-fade-up">
-        <div className="text-center mb-8">
-          <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-            Set up your profile
-          </h1>
-          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-            Let people know who you are
-          </p>
+    <div className="min-h-dvh flex flex-col items-center justify-center px-6 bg-white">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-10">
+          <h1 className="text-[20px] font-medium text-gray-900 mb-1">Profile info</h1>
+          <p className="text-[14px] text-gray-500">Please provide your name and an optional profile photo</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Avatar upload */}
+          {/* Avatar */}
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-28 h-28 rounded-full flex items-center justify-center overflow-hidden transition-all touch-target"
-                style={{
-                  background: avatarPreview
-                    ? 'transparent'
-                    : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))',
-                  border: '3px solid var(--color-primary-light)',
-                  boxShadow: '0 4px 20px rgba(91, 63, 217, 0.2)',
-                }}
-              >
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-28 h-28 rounded-full flex items-center justify-center overflow-hidden bg-gray-200">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-3xl font-bold text-white">{initials}</span>
+                  <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#8696A0" strokeWidth="1.5">
+                    <path d="M20 21V19C20 16.24 15.5 15 12 15C8.5 15 4 16.24 4 19V21" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="8" r="4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 )}
               </button>
-
-              {/* Camera badge */}
-              <div
-                className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  background: 'var(--color-primary)',
-                  border: '3px solid var(--color-background)',
-                  boxShadow: '0 2px 8px rgba(91, 63, 217, 0.3)',
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M23 19C23 20.1046 22.1046 21 21 21H3C1.89543 21 1 20.1046 1 19V8C1 6.89543 1.89543 6 3 6H7L9 3H15L17 6H21C22.1046 6 23 6.89543 23 8V19Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <div className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer bg-[#128C7E] border-3 border-white"
+                onClick={() => fileInputRef.current?.click()}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M23 19C23 20.1 22.1 21 21 21H3C1.9 21 1 20.1 1 19V8C1 6.9 1.9 6 3 6H7L9 3H15L17 6H21C22.1 6 23 6.9 23 8V19Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <circle cx="12" cy="13" r="4" stroke="white" strokeWidth="2"/>
                 </svg>
               </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
             </div>
           </div>
 
           {/* Name input */}
-          <div className="glass-card p-5 mb-6">
-            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>
-              Your name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter your name"
-              value={name}
-              onChange={e => {
-                setName(e.target.value)
-                if (error) setError('')
-              }}
-              autoFocus
-              maxLength={50}
-              className="w-full h-12 px-4 rounded-xl text-sm font-medium outline-none transition-all"
-              style={{
-                background: 'var(--color-surface)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--color-text-primary)',
-                caretColor: 'var(--color-primary)',
-              }}
-              onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--glass-border)')}
-            />
-            <p className="text-right text-xs mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
-              {name.length}/50
-            </p>
+          <div className="mb-6">
+            <input type="text" placeholder="Type your name here" value={name}
+              onChange={e => { setName(e.target.value); if (error) setError('') }}
+              autoFocus maxLength={50}
+              className="w-full py-3 text-[17px] text-gray-900 border-b-2 border-[#128C7E] outline-none placeholder:text-gray-400" />
+            <div className="flex justify-between mt-1.5">
+              {error && <p className="text-[13px] text-red-500">{error}</p>}
+              <p className="text-[13px] text-gray-400 ml-auto">{name.length}/50</p>
+            </div>
           </div>
 
-          {/* Error */}
-          {error && (
-            <p className="text-xs text-center mb-4 animate-fade-up" style={{ color: 'var(--color-error)' }}>
-              {error}
-            </p>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading || !name.trim()}
-            className="w-full h-14 rounded-xl font-semibold text-sm transition-all touch-target"
-            style={{
-              background: name.trim()
-                ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))'
-                : 'var(--color-surface)',
-              color: name.trim() ? '#fff' : 'var(--color-text-muted)',
-              opacity: loading ? 0.7 : 1,
-              boxShadow: name.trim() ? '0 4px 20px rgba(91, 63, 217, 0.3)' : 'none',
-            }}
-          >
+          <button type="submit" disabled={loading || !name.trim()}
+            className={`w-full py-3.5 rounded-full text-[16px] font-medium transition-colors ${
+              name.trim() ? 'bg-[#128C7E] text-white active:bg-[#075E54]' : 'bg-gray-200 text-gray-400'
+            } ${loading ? 'opacity-70' : ''}`}>
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Setting up...
               </span>
-            ) : (
-              'Continue'
-            )}
+            ) : 'Next'}
           </button>
 
-          {/* Skip */}
-          <button
-            type="button"
-            onClick={() => navigate('/', { replace: true })}
-            className="w-full mt-3 py-3 text-xs font-medium transition-colors touch-target"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
+          <button type="button" onClick={() => navigate('/', { replace: true })}
+            className="w-full mt-3 py-3 text-[14px] text-gray-500">
             Skip for now
           </button>
         </form>

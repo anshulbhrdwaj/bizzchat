@@ -2,25 +2,28 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '@/lib/api'
+import ProductFormModal from '@/components/catalog/ProductFormModal'
+import ProductManagerModal from '@/components/catalog/ProductManagerModal'
 
 export default function CatalogManagerPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [editingCollection, setEditingCollection] = useState<any>(null)
   const [newCollectionName, setNewCollectionName] = useState('')
   const [showNewCollection, setShowNewCollection] = useState(false)
+  const [addingProductTo, setAddingProductTo] = useState<string | null>(null)
+  const [managingProductId, setManagingProductId] = useState<string | null>(null)
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['catalog-manager'],
     queryFn: async () => {
-      const { data } = await apiClient.get('/business/catalog')
+      const { data } = await apiClient.get('/catalog/manager')
       return data
     },
   })
 
   const createCollection = useMutation({
     mutationFn: async (name: string) => {
-      await apiClient.post('/business/catalog/collections', { name })
+      await apiClient.post('/catalog/collections', { name })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['catalog-manager'] })
@@ -29,16 +32,32 @@ export default function CatalogManagerPage() {
     },
   })
 
-  const toggleCollection = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      await apiClient.put(`/business/catalog/collections/${id}`, { isActive })
-    },
+  const deleteCollection = useMutation({
+    mutationFn: async (id: string) => { await apiClient.delete(`/catalog/collections/${id}`) },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalog-manager'] }),
   })
 
-  const deleteCollection = useMutation({
-    mutationFn: async (id: string) => { await apiClient.delete(`/business/catalog/collections/${id}`) },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalog-manager'] }),
+  // We don't need a strict "images" upload logic here if it's already well handled in ProductFormModal.
+  // Actually, we do need it because ProductFormModal just passes data up.
+  const createProduct = useMutation({
+    mutationFn: async ({ collectionId, name, basePrice, description, image }: any) => {
+      // 1. Create product
+      const { data: product } = await apiClient.post('/catalog/products', { name, basePrice, description })
+      // 2. Link to collection
+      await apiClient.post(`/catalog/collections/${collectionId}/products`, { productId: product.id })
+      // 3. Upload image if present
+      if (image) {
+        const formData = new FormData()
+        formData.append('image', image)
+        await apiClient.post(`/catalog/products/${product.id}/images`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['catalog-manager'] })
+      setAddingProductTo(null)
+    },
   })
 
   const collections = data?.collections || []
@@ -46,137 +65,104 @@ export default function CatalogManagerPage() {
   // ─── Loading ───────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
-        <h1 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>Catalog Manager</h1>
-        <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass-card h-20 animate-pulse" />)}</div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8" style={{ background: 'var(--color-background)' }}>
-        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Failed to load catalog</p>
-        <button onClick={() => refetch()} className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white" style={{ background: 'var(--color-primary)' }}>Retry</button>
+      <div className="flex-1 flex flex-col bg-white">
+        <header className="px-4 py-3 bg-[#075E54] text-white safe-area-top shrink-0">
+          <h1 className="text-xl font-medium">Catalog</h1>
+        </header>
+        <div className="p-4 space-y-4">
+          <div className="h-12 bg-gray-100 rounded animate-pulse" />
+          <div className="h-20 bg-gray-100 rounded animate-pulse" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
-      <header className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={() => navigate('/dashboard')} className="w-9 h-9 rounded-xl flex items-center justify-center touch-target md:hidden"
-          style={{ color: 'var(--color-text-primary)' }}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+    <div className="flex-1 flex flex-col bg-gray-50 pb-20 md:pb-4">
+      <header className="px-4 py-3 flex items-center gap-3 safe-area-top shrink-0 bg-[#075E54] text-white">
+        <button onClick={() => navigate('/dashboard')} className="w-8 h-8 flex items-center justify-center -ml-2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Catalog Manager</h1>
+        <h1 className="text-xl font-medium flex-1">Catalog</h1>
       </header>
 
-      <div className="px-4">
-        {/* Add Collection */}
-        <button onClick={() => setShowNewCollection(true)}
-          className="w-full py-3 rounded-xl text-xs font-semibold mb-4 border-2 border-dashed transition-all"
-          style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-          + New Collection
+      <div className="bg-white mt-3 border-y border-gray-200">
+        <button onClick={() => setShowNewCollection(true)} className="flex items-center gap-4 w-full p-4 active:bg-gray-50 transition-colors text-left" style={{ borderBottom: showNewCollection ? 'none' : '1px solid #E5E7EB' }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold shrink-0">
+            +
+          </div>
+          <p className="font-medium text-[15px] text-green-700">Add new collection</p>
         </button>
 
         {showNewCollection && (
-          <div className="glass-card p-4 mb-4 animate-fade-up">
+          <div className="p-4 bg-gray-50 border-b border-gray-200">
             <input type="text" value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)}
-              placeholder="Collection name..." autoFocus
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none mb-3"
-              style={{ background: 'var(--color-surface)', border: '1.5px solid var(--glass-border)', color: 'var(--color-text-primary)', caretColor: 'var(--color-primary)' }} />
-            <div className="flex gap-2">
+              placeholder="Collection name" autoFocus
+              className="w-full px-3 py-2 border-b-2 border-green-600 outline-none bg-transparent text-sm mb-3" />
+            <div className="flex gap-2 justify-end text-sm font-medium">
+              <button onClick={() => { setShowNewCollection(false); setNewCollectionName('') }} className="px-3 py-1.5 text-gray-500">Cancel</button>
               <button onClick={() => newCollectionName.trim() && createCollection.mutate(newCollectionName.trim())}
                 disabled={!newCollectionName.trim()}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold text-white"
-                style={{ background: newCollectionName.trim() ? 'var(--color-primary)' : 'var(--color-surface)' }}>Create</button>
-              <button onClick={() => { setShowNewCollection(false); setNewCollectionName('') }}
-                className="px-4 py-2 rounded-xl text-xs font-medium"
-                style={{ color: 'var(--color-text-muted)' }}>Cancel</button>
+                className="px-3 py-1.5 text-white rounded bg-green-600 disabled:opacity-50">Save</button>
             </div>
           </div>
         )}
-
-        {/* Collections */}
-        {collections.length === 0 ? (
-          <div className="flex flex-col items-center py-16">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3" style={{ background: 'var(--color-primary-light)' }}><span className="text-2xl">📦</span></div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>No collections yet</p>
-            <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Create your first collection to organize products</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {collections.map((col: any) => (
-              <div key={col.id} className="glass-card overflow-hidden">
-                {/* Collection header */}
-                <div className="p-4 flex items-center gap-3">
-                  {/* Drag handle */}
-                  <div className="text-xs cursor-grab" style={{ color: 'var(--color-text-muted)' }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <circle cx="5" cy="3" r="1" fill="currentColor" /><circle cx="9" cy="3" r="1" fill="currentColor" />
-                      <circle cx="5" cy="7" r="1" fill="currentColor" /><circle cx="9" cy="7" r="1" fill="currentColor" />
-                      <circle cx="5" cy="11" r="1" fill="currentColor" /><circle cx="9" cy="11" r="1" fill="currentColor" />
-                    </svg>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{col.name}</p>
-                    <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{col.products?.length || 0} products</p>
-                  </div>
-
-                  {/* Active toggle */}
-                  <button onClick={() => toggleCollection.mutate({ id: col.id, isActive: !col.isActive })}
-                    className="w-10 h-6 rounded-full relative transition-all"
-                    style={{ background: col.isActive ? 'var(--color-success)' : 'var(--color-surface)', border: '1px solid var(--glass-border)' }}>
-                    <div className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
-                      style={{ transform: col.isActive ? 'translateX(18px)' : 'translateX(2px)' }} />
-                  </button>
-
-                  {/* Edit */}
-                  <button onClick={() => setEditingCollection(editingCollection === col.id ? null : col.id)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ color: 'var(--color-text-muted)' }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10 2L12 4L5 11H3V9L10 2Z" stroke="currentColor" strokeWidth="1.2" /></svg>
-                  </button>
-
-                  {/* Delete */}
-                  <button onClick={() => confirm('Delete this collection?') && deleteCollection.mutate(col.id)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center"
-                    style={{ color: 'var(--color-error)' }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4H12M5 4V2H9V4M5 6V11M9 6V11M3 4V12H11V4" stroke="currentColor" strokeWidth="1.2" /></svg>
-                  </button>
-                </div>
-
-                {/* Products grid */}
-                {editingCollection === col.id && (
-                  <div className="px-4 pb-4 animate-fade-up">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {(col.products || []).map((p: any) => (
-                        <div key={p.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--color-surface)', border: '1px solid var(--glass-border)' }}>
-                          <div className="aspect-square flex items-center justify-center" style={{ background: 'var(--color-surface)' }}>
-                            {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <span className="text-2xl">📦</span>}
-                          </div>
-                          <div className="p-2">
-                            <p className="text-[10px] font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{p.name}</p>
-                            <p className="text-[10px] font-bold" style={{ color: 'var(--color-primary)' }}>₹{Number(p.basePrice).toLocaleString('en-IN')}</p>
-                          </div>
-                        </div>
-                      ))}
-                      {/* Add product button */}
-                      <button className="aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1"
-                        style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                        <span className="text-lg">+</span>
-                        <span className="text-[10px] font-semibold">Add Product</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      <div className="mt-4 space-y-4">
+        {collections.map((col: any) => (
+          <div key={col.id} className="bg-white border-y border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-[15px] font-semibold text-gray-800">{col.name}</h2>
+              <button onClick={() => confirm('Delete collection?') && deleteCollection.mutate(col.id)} className="text-xs text-red-500 font-medium">Delete</button>
+            </div>
+            
+            <div className="pl-4">
+              <button onClick={() => setAddingProductTo(col.id)} className="flex items-center gap-4 w-full py-3 pr-4 active:bg-gray-50 transition-colors border-b border-gray-100">
+                <div className="w-12 h-12 rounded border border-dashed border-green-600 flex items-center justify-center text-green-600 shrink-0 bg-green-50">
+                  +
+                </div>
+                <p className="font-medium text-[14px] text-green-700 text-left">Add new item</p>
+              </button>
+
+              {(col.products || []).map((p: any, i: number) => (
+                <button key={p.id} onClick={() => setManagingProductId(p.id)} className="flex items-center w-full py-3 pr-4 active:bg-gray-50 transition-colors" style={{ borderBottom: i === col.products.length - 1 ? 'none' : '1px solid #F3F4F6' }}>
+                  <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 shrink-0 mr-4 flex justify-center items-center">
+                    {p.images?.[0]?.url ? <img src={p.images[0].url} alt="" className="w-full h-full object-cover" /> : <span className="text-xl">📦</span>}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-[15px] text-gray-900 truncate">{p.name}</p>
+                    <p className="text-[14px] text-gray-500 mt-0.5">₹{Number(p.basePrice).toLocaleString('en-IN')}</p>
+                  </div>
+                  {(p.variantGroups?.length > 0) && (
+                    <span className="px-2 py-1 rounded text-[10px] bg-gray-100 text-gray-600 font-medium ml-2 shrink-0">
+                      {p.variantGroups.length} variants
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {addingProductTo && (
+        <ProductFormModal 
+          onClose={() => setAddingProductTo(null)}
+          onSubmit={(data) => createProduct.mutate({ ...data, collectionId: addingProductTo })}
+          isLoading={createProduct.isPending}
+        />
+      )}
+
+      {managingProductId && (
+        <ProductManagerModal
+          productId={managingProductId}
+          onClose={() => {
+            setManagingProductId(null)
+            queryClient.invalidateQueries({ queryKey: ['catalog-manager'] })
+          }}
+        />
+      )}
     </div>
   )
 }

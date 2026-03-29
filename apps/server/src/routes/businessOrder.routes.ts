@@ -86,19 +86,65 @@ router.patch('/:id/status', requireAuth, requireBusinessOwner, validateBody(upda
       include: { items: true, statusHistory: { orderBy: { createdAt: 'asc' } } },
     })
 
-    // Emit socket event order:status to customer
+    // Emit socket event order:status to customer + chat integration
     try {
       const io = getIO()
-      const order2 = await prisma.order.findUnique({
+      const order = await prisma.order.findUnique({
         where: { id: req.params.id },
-        select: { userId: true },
+        include: { items: true },
       })
-      if (order2) {
-        io.to(`user:${order2.userId}`).emit('order:status', {
+      
+      if (order) {
+        io.to(`user:${order.userId}`).emit('order:status', {
           orderId: req.params.id,
           status: req.body.status,
           note: req.body.note,
         })
+        
+        // ─── Chat Message Integration ✨ ───
+        let chat = await prisma.chat.findFirst({
+          where: {
+            AND: [
+              { members: { some: { userId: order.userId } } },
+              { members: { some: { userId: req.userId! } } }, // business owner is the sender
+            ]
+          },
+          include: { members: true }
+        })
+
+        if (!chat) {
+          chat = await prisma.chat.create({
+            data: { members: { create: [{ userId: order.userId }, { userId: req.userId! }] } },
+            include: { members: true }
+          })
+        }
+
+        const msg = await prisma.message.create({
+          data: {
+            chatId: chat.id,
+            senderId: req.userId!,
+            type: 'ORDER_UPDATE',
+            content: `Order #${order.orderNumber} status updated to ${req.body.status}`,
+            metadata: {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              status: req.body.status,
+              itemCount: order.items.length,
+              total: order.total
+            }
+          },
+          include: { sender: { select: { id: true, name: true, avatarUrl: true } } }
+        })
+
+        await prisma.chat.update({ where: { id: chat.id }, data: { updatedAt: new Date() } })
+        io.to(`chat:${chat.id}`).emit('message:new', msg)
+
+        for (const m of chat.members) {
+          const unreadCount = await prisma.message.count({
+            where: { chatId: chat.id, createdAt: { gt: m.lastRead }, senderId: { not: m.userId } }
+          })
+          io.to(`user:${m.userId}`).emit('chat:updated', { chatId: chat.id, lastMessage: msg, unreadCount })
+        }
       }
     } catch (socketErr) {
       logger.warn('Socket emit failed for order:status', { error: socketErr })

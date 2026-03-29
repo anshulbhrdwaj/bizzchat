@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import apiClient from '@/lib/api'
 import { formatTimestamp } from '@/lib/utils'
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  PENDING: { bg: 'rgba(217, 119, 6, 0.15)', text: '#D97706' },
-  CONFIRMED: { bg: 'rgba(8, 145, 178, 0.15)', text: '#0891B2' },
-  PROCESSING: { bg: 'rgba(91, 63, 217, 0.15)', text: '#5B3FD9' },
-  DISPATCHED: { bg: 'rgba(6, 182, 212, 0.15)', text: '#06B6D4' },
-  DELIVERED: { bg: 'rgba(5, 150, 105, 0.15)', text: '#059669' },
-  CANCELLED: { bg: 'rgba(220, 38, 38, 0.15)', text: '#DC2626' },
-  REFUNDED: { bg: 'rgba(107, 114, 128, 0.15)', text: '#6B7280' },
+const STATUS_LABELS: Record<string, { color: string; icon: string }> = {
+  PENDING:    { color: 'text-amber-600', icon: '⏳' },
+  CONFIRMED:  { color: 'text-cyan-600', icon: '✅' },
+  PROCESSING: { color: 'text-purple-600', icon: '⚙️' },
+  DISPATCHED: { color: 'text-blue-500', icon: '🚚' },
+  DELIVERED:  { color: 'text-green-600', icon: '📦' },
+  CANCELLED:  { color: 'text-red-500', icon: '❌' },
+  REFUNDED:   { color: 'text-gray-500', icon: '↩️' },
 }
 
 type TabKey = 'active' | 'completed' | 'cancelled'
@@ -24,7 +24,7 @@ export default function OrdersPage() {
     queryKey: ['orders'],
     queryFn: async () => {
       const { data } = await apiClient.get('/orders')
-      return data
+      return data.data || []
     },
   })
 
@@ -40,91 +40,86 @@ export default function OrdersPage() {
     return ['CANCELLED', 'REFUNDED'].includes(o.status)
   })
 
-  // ─── Loading ───────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
-        <header className="px-4 pt-4 pb-3"><h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Orders</h1></header>
-        <div className="px-4 space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="glass-card p-4 animate-pulse">
-              <div className="flex justify-between mb-2"><div className="h-3.5 w-28 rounded" style={{ background: 'var(--color-surface)' }} /><div className="h-5 w-20 rounded-full" style={{ background: 'var(--color-surface)' }} /></div>
-              <div className="h-3 w-40 rounded" style={{ background: 'var(--color-surface)' }} />
-            </div>
-          ))}
+      <div className="flex-1 flex flex-col bg-gray-50">
+        <header className="px-4 py-3 bg-[#075E54] text-white safe-area-top shrink-0">
+          <h1 className="text-[17px] font-medium">Orders</h1>
+        </header>
+        <div className="p-4 space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 bg-gray-200 rounded animate-pulse" />)}
         </div>
       </div>
     )
   }
 
-  // ─── Error ─────────────────────────────────────────────
   if (error) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8" style={{ background: 'var(--color-background)' }}>
-        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Failed to load orders</p>
-        <button onClick={() => refetch()} className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white" style={{ background: 'var(--color-primary)' }}>Retry</button>
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-gray-50">
+        <p className="text-gray-600 font-medium">Failed to load orders</p>
+        <button onClick={() => refetch()} className="px-6 py-2.5 rounded text-white bg-green-600 font-medium">Retry</button>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
-      <header className="px-4 pt-4 pb-3">
-        <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Orders</h1>
+    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+      <header className="px-4 py-3 bg-[#075E54] text-white safe-area-top shrink-0 shadow-sm">
+        <h1 className="text-[17px] font-medium">Orders</h1>
       </header>
 
       {/* Tab bar */}
-      <div className="px-4 flex gap-2 mb-4">
+      <div className="bg-white border-b border-gray-200 flex">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className="px-4 py-2 rounded-full text-xs font-semibold transition-all"
-            style={{
-              background: tab === t.key ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: tab === t.key ? 'white' : 'var(--color-text-muted)',
-            }}>
+            className={`flex-1 py-3 text-[14px] font-medium border-b-2 transition-colors ${
+              tab === t.key ? 'border-[#128C7E] text-[#128C7E]' : 'border-transparent text-gray-500'
+            }`}>
             {t.label}
           </button>
         ))}
       </div>
 
       {/* Orders list */}
-      <div className="px-4 space-y-3">
+      <div className="flex-1 overflow-y-auto pb-20 md:pb-4">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3" style={{ background: 'var(--color-primary-light)' }}>
-              <span className="text-2xl">📦</span>
-            </div>
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No {tab} orders</p>
+            <span className="text-4xl text-gray-300 mb-3">📦</span>
+            <p className="text-[15px] text-gray-500">No {tab} orders</p>
           </div>
         ) : (
-          filtered.map((order: any) => {
-            const statusColor = STATUS_COLORS[order.status] || STATUS_COLORS.PENDING
-            return (
-              <button
-                key={order.id}
-                onClick={() => navigate(`/orders/${order.id}`)}
-                className="glass-card w-full p-4 text-left transition-all hover:shadow-lg"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
-                    {order.orderNumber || `#${order.id.slice(0, 8)}`}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-[10px] font-bold transition-colors"
-                    style={{ background: statusColor.bg, color: statusColor.text, transitionDuration: '300ms' }}>
-                    {order.status}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {order.items?.length || 0} items · {formatTimestamp(order.createdAt)}
-                  </p>
-                  <p className="text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                    ₹{Number(order.total).toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </button>
-            )
-          })
+          <div className="bg-white mt-2 border-y border-gray-200">
+            {filtered.map((order: any, idx: number) => {
+              const sl = STATUS_LABELS[order.status] || STATUS_LABELS.PENDING
+              return (
+                <button
+                  key={order.id}
+                  onClick={() => navigate(`/orders/${order.id}`)}
+                  className="w-full flex items-center p-4 text-left active:bg-gray-50 transition-colors"
+                  style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #F3F4F6' : 'none' }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[15px] font-medium text-gray-900">
+                        {order.orderNumber || `#${order.id.slice(0, 8)}`}
+                      </span>
+                      <span className={`text-[13px] font-medium flex items-center gap-1 ${sl.color}`}>
+                        {sl.icon} {order.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[13px] text-gray-500">
+                        {order.items?.length || 0} items · {formatTimestamp(order.createdAt)}
+                      </p>
+                      <p className="text-[15px] font-medium text-green-700">
+                        ₹{Number(order.total).toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
     </div>

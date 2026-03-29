@@ -8,21 +8,17 @@ export default function SharedCartPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['shared-cart', id],
-    queryFn: async () => {
-      const { data } = await apiClient.get(`/shared-carts/${id}`)
-      return data
-    },
+    queryFn: async () => { const { data } = await apiClient.get(`/shared-carts/${id}`); return data },
     enabled: !!id,
   })
 
-  // ─── Loading ───────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4" style={{ background: 'var(--color-background)' }}>
+      <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4 bg-white">
         <div className="space-y-3 animate-pulse">
-          <div className="h-16 rounded-2xl" style={{ background: 'var(--color-surface)' }} />
+          <div className="h-16 rounded-lg bg-gray-100" />
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex gap-3 py-3"><div className="w-14 h-14 rounded-xl" style={{ background: 'var(--color-surface)' }} /><div className="flex-1 space-y-2"><div className="h-3 w-32 rounded" style={{ background: 'var(--color-surface)' }} /><div className="h-3 w-16 rounded" style={{ background: 'var(--color-surface)' }} /></div></div>
+            <div key={i} className="flex gap-3 py-3"><div className="w-14 h-14 rounded-lg bg-gray-100" /><div className="flex-1 space-y-2"><div className="h-3 w-32 rounded bg-gray-100" /><div className="h-3 w-16 rounded bg-gray-50" /></div></div>
           ))}
         </div>
       </div>
@@ -31,9 +27,9 @@ export default function SharedCartPage() {
 
   if (error) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8" style={{ background: 'var(--color-background)' }}>
-        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Failed to load shared cart</p>
-        <button onClick={() => refetch()} className="px-6 py-2.5 rounded-xl text-xs font-semibold text-white" style={{ background: 'var(--color-primary)' }}>Retry</button>
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8 bg-white">
+        <p className="text-[15px] font-medium text-gray-900">Failed to load shared cart</p>
+        <button onClick={() => refetch()} className="px-6 py-2.5 rounded-full text-[14px] font-medium text-white bg-[#128C7E]">Retry</button>
       </div>
     )
   }
@@ -45,56 +41,55 @@ export default function SharedCartPage() {
   const subtotal = items.reduce((s: number, i: any) => s + Number(i.price) * i.quantity, 0)
 
   const statusColors: Record<string, { bg: string; text: string }> = {
-    PENDING: { bg: 'rgba(217, 119, 6, 0.15)', text: '#D97706' },
-    VIEWED: { bg: 'rgba(8, 145, 178, 0.15)', text: '#0891B2' },
-    ADDED: { bg: 'rgba(91, 63, 217, 0.15)', text: '#5B3FD9' },
-    ORDERED: { bg: 'rgba(5, 150, 105, 0.15)', text: '#059669' },
-    EXPIRED: { bg: 'rgba(107, 114, 128, 0.15)', text: '#6B7280' },
+    PENDING: { bg: 'rgba(217, 119, 6, 0.1)', text: '#D97706' },
+    VIEWED: { bg: 'rgba(8, 145, 178, 0.1)', text: '#0891B2' },
+    ADDED: { bg: 'rgba(18, 140, 126, 0.1)', text: '#128C7E' },
+    ORDERED: { bg: 'rgba(5, 150, 105, 0.1)', text: '#059669' },
+    EXPIRED: { bg: 'rgba(107, 114, 128, 0.1)', text: '#6B7280' },
   }
 
   const status = isExpired ? 'EXPIRED' : (data.status || 'PENDING')
   const sc = statusColors[status] || statusColors.PENDING
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--color-background)' }}>
+    <div className="flex-1 flex flex-col overflow-hidden bg-white">
       <div className="flex-1 overflow-y-auto pb-32">
         {/* Header */}
-        <header className="px-4 pt-4 pb-3 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl flex items-center justify-center touch-target md:hidden"
-            style={{ color: 'var(--color-text-primary)' }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-          </button>
-          <h1 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Shared Cart</h1>
-          <span className="ml-auto px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: sc.bg, color: sc.text }}>
-            {status}
-          </span>
+        <header className="safe-area-top bg-[#075E54] text-white">
+          <div className="px-4 py-3 flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center md:hidden">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <h1 className="text-[20px] font-medium flex-1">Shared Cart</h1>
+            <span className="px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: sc.bg, color: sc.text }}>
+              {status}
+            </span>
+          </div>
         </header>
 
         {/* Business info */}
-        <div className="mx-4 p-4 rounded-2xl" style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))' }}>
+        <div className="mx-4 mt-3 p-4 rounded-lg bg-[#128C7E]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.2)' }}>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/20">
               <span className="text-lg">🛒</span>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">{data.business?.name || 'Business'}</p>
-              <p className="text-[10px] text-white/70">{items.length} items · ₹{subtotal.toLocaleString('en-IN')}</p>
+              <p className="text-[15px] font-medium text-white">{data.business?.name || 'Business'}</p>
+              <p className="text-[12px] text-white/70">{items.length} items · ₹{subtotal.toLocaleString('en-IN')}</p>
             </div>
           </div>
         </div>
 
         {/* Expiry warning */}
         {data.expiresAt && !isExpired && (
-          <div className="mx-4 mt-3 px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-medium"
+          <div className="mx-4 mt-3 px-4 py-2 rounded-lg flex items-center gap-2 text-[13px] font-medium"
             style={{ background: 'rgba(217, 119, 6, 0.1)', color: '#D97706' }}>
             ⏰ Expires {new Date(data.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
           </div>
         )}
 
-        {/* Expired overlay text */}
         {isExpired && (
-          <div className="mx-4 mt-3 px-4 py-3 rounded-xl text-center text-xs font-bold"
-            style={{ background: 'rgba(107, 114, 128, 0.1)', color: '#6B7280' }}>
+          <div className="mx-4 mt-3 px-4 py-3 rounded-lg text-center text-[13px] font-bold bg-gray-100 text-gray-500">
             This cart has expired
           </div>
         )}
@@ -102,20 +97,20 @@ export default function SharedCartPage() {
         {/* Items */}
         <div className="px-4 mt-4" style={{ opacity: isExpired ? 0.5 : 1 }}>
           {items.map((item: any) => (
-            <div key={item.id} className="flex gap-3 py-3" style={{ borderBottom: '1px solid var(--glass-border)' }}>
-              <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0" style={{ background: 'var(--color-surface)' }}>
+            <div key={item.id} className="flex gap-3 py-3 border-b border-gray-100">
+              <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                 {item.product?.images?.[0]?.url ? (
                   <img src={item.product.images[0].url} alt="" className="w-full h-full object-cover" />
                 ) : <div className="w-full h-full flex items-center justify-center"><span className="text-xl">📦</span></div>}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold truncate mb-0.5" style={{ color: 'var(--color-text-primary)' }}>{item.product?.name || 'Product'}</p>
-                {item.variantLabel && <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{item.variantLabel}</p>}
-                {item.note && <p className="text-[10px] italic mt-0.5" style={{ color: 'var(--color-text-muted)' }}>"{item.note}"</p>}
+                <p className="text-[14px] font-medium text-gray-900 truncate mb-0.5">{item.product?.name || 'Product'}</p>
+                {item.variantLabel && <p className="text-[12px] text-gray-500">{item.variantLabel}</p>}
+                {item.note && <p className="text-[12px] italic text-gray-400 mt-0.5">"{item.note}"</p>}
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>₹{(Number(item.price) * item.quantity).toLocaleString('en-IN')}</p>
-                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>×{item.quantity}</p>
+                <p className="text-[14px] font-bold text-[#128C7E]">₹{(Number(item.price) * item.quantity).toLocaleString('en-IN')}</p>
+                <p className="text-[12px] text-gray-500">×{item.quantity}</p>
               </div>
             </div>
           ))}
@@ -123,18 +118,17 @@ export default function SharedCartPage() {
 
         {/* Cart note */}
         {data.note && (
-          <div className="mx-4 mt-4 p-3 rounded-xl" style={{ background: 'var(--color-surface)' }}>
-            <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--color-text-muted)' }}>Note from business</p>
-            <p className="text-xs" style={{ color: 'var(--color-text-primary)' }}>{data.note}</p>
+          <div className="mx-4 mt-4 p-3 rounded-lg bg-gray-50">
+            <p className="text-[12px] font-medium text-gray-500 mb-1">Note from business</p>
+            <p className="text-[14px] text-gray-900">{data.note}</p>
           </div>
         )}
       </div>
 
       {/* CTA */}
       {!isExpired && (
-        <div className="px-4 py-3 safe-area-bottom" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(12px)', borderTop: '1px solid var(--glass-border)' }}>
-          <button className="w-full h-14 rounded-xl font-semibold text-sm text-white"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))', boxShadow: '0 4px 20px rgba(91, 63, 217, 0.3)' }}>
+        <div className="px-4 py-3 safe-area-bottom bg-white border-t border-gray-200">
+          <button className="w-full py-3.5 rounded-full text-[16px] font-medium text-white bg-[#128C7E] active:bg-[#075E54]">
             Add All to My Cart · ₹{subtotal.toLocaleString('en-IN')}
           </button>
         </div>

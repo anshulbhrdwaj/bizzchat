@@ -24,14 +24,22 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       orderBy: { chat: { updatedAt: 'desc' } },
     })
 
-    const chats = memberships.map(m => {
-      const unreadCount = 0 // TODO: Calculate based on lastRead vs message count
-      return {
-        ...m.chat,
-        lastMessage: m.chat.messages[0] ?? null,
-        unreadCount,
-      }
-    })
+    const chats = await Promise.all(
+      memberships.map(async (m) => {
+        const unreadCount = await prisma.message.count({
+          where: {
+            chatId: m.chatId,
+            createdAt: { gt: m.lastRead },
+            senderId: { not: req.userId! },
+          },
+        })
+        return {
+          ...m.chat,
+          lastMessage: m.chat.messages[0] ?? null,
+          unreadCount,
+        }
+      })
+    )
 
     res.json(chats)
   } catch (error) {
@@ -79,6 +87,34 @@ router.post('/', requireAuth, validateBody(createChatSchema), async (req: AuthRe
   } catch (error) {
     logger.error('Create chat error', { error })
     res.status(500).json({ error: 'Failed to create chat' })
+  }
+})
+
+// GET /:id — get single chat details
+router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const chat = await prisma.chat.findUnique({
+      where: { id: req.params.id },
+      include: {
+        members: { include: { user: { select: { id: true, name: true, phone: true, avatarUrl: true, isOnline: true, lastSeen: true, businessProfile: true } } } },
+      },
+    })
+    
+    if (!chat) {
+      res.status(404).json({ error: 'Chat not found' })
+      return
+    }
+
+    const isMember = chat.members.some(m => m.userId === req.userId)
+    if (!isMember) {
+      res.status(403).json({ error: 'Not a member of this chat' })
+      return
+    }
+
+    res.json(chat)
+  } catch (error) {
+    logger.error('Get chat error', { error })
+    res.status(500).json({ error: 'Failed to fetch chat details' })
   }
 })
 
@@ -163,13 +199,19 @@ router.post('/:id/messages', requireAuth, validateBody(sendMessageSchema), async
       // Notify chat list updates for all members
       const members = await prisma.chatMember.findMany({
         where: { chatId: req.params.id },
-        select: { userId: true },
       })
-      for (const member of members) {
-        io.to(`user:${member.userId}`).emit('chat:updated', {
+      for (const m of members) {
+        const unreadCount = await prisma.message.count({
+          where: {
+            chatId: req.params.id,
+            createdAt: { gt: m.lastRead },
+            senderId: { not: m.userId },
+          },
+        })
+        io.to(`user:${m.userId}`).emit('chat:updated', {
           chatId: req.params.id,
           lastMessage: message,
-          unreadCount: 0,
+          unreadCount,
         })
       }
     } catch (socketErr) {

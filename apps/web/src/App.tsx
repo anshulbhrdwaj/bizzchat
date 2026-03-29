@@ -3,6 +3,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { initSocket } from '@/lib/socket'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30000, retry: 1 } },
@@ -28,12 +29,18 @@ const SharedCartCreatorPage = lazy(() => import('@/pages/SharedCartCreatorPage')
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const BusinessSetupPage = lazy(() => import('@/pages/BusinessSetupPage'))
 
+// New nav index pages
+const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
+const CatalogsIndexPage = lazy(() => import('@/pages/CatalogsIndexPage'))
+const CartsIndexPage = lazy(() => import('@/pages/CartsIndexPage'))
+
 // Loading fallback
 function Loading() {
   return (
-    <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
+    // <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
+    //   <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    // </div>
+    <></>
   )
 }
 
@@ -59,9 +66,8 @@ function BusinessGuard() {
 
   if (hasProfile === null) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+      <div className="flex-1 flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-2 border-[#128C7E] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -107,8 +113,11 @@ export default function App() {
               <Route path="/" element={<Navigate to="/chats" replace />} />
               <Route path="/chats" element={<ChatListPage />} />
               <Route path="/chats/:chatId" element={<ChatWindowPage />} />
+              <Route path="/contacts" element={<ContactsPage />} />
+              <Route path="/catalog" element={<CatalogsIndexPage />} />
               <Route path="/catalog/:businessId" element={<CatalogPage />} />
               <Route path="/catalog/:businessId/product/:productId" element={<ProductDetailPage />} />
+              <Route path="/cart" element={<CartsIndexPage />} />
               <Route path="/cart/:businessId" element={<CartPage />} />
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/orders/:orderId" element={<OrderDetailPage />} />
@@ -129,6 +138,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ToastContainer />
       </Suspense>
     </BrowserRouter>
     </QueryClientProvider>

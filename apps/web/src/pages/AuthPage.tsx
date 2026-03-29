@@ -40,89 +40,69 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-6 relative overflow-hidden">
-      {/* Purple mesh background */}
-      <div className="absolute inset-0 -z-10" style={{
-        background: `
-          radial-gradient(ellipse at 30% 20%, rgba(91, 63, 217, 0.25) 0%, transparent 50%),
-          radial-gradient(ellipse at 70% 80%, rgba(123, 95, 232, 0.2) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 50%, rgba(8, 145, 178, 0.1) 0%, transparent 60%),
-          var(--color-background)
-        `
-      }} />
-
-      {/* Floating decorative circles */}
-      <div className="absolute top-20 left-10 w-32 h-32 rounded-full opacity-20 animate-pulse"
-        style={{ background: 'var(--color-primary)', filter: 'blur(40px)' }} />
-      <div className="absolute bottom-32 right-8 w-24 h-24 rounded-full opacity-15 animate-pulse"
-        style={{ background: 'var(--color-primary-mid)', filter: 'blur(30px)', animationDelay: '1s' }} />
-
+    <div className="min-h-dvh flex flex-col items-center justify-center px-6 bg-white">
       {/* Logo & Title */}
-      <div className="mb-10 text-center animate-fade-up">
-        <div className="w-20 h-20 mx-auto mb-5 rounded-3xl flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))' }}>
+      <div className="mb-10 text-center">
+        <div className="w-20 h-20 mx-auto mb-5 rounded-full flex items-center justify-center bg-[#128C7E]">
           <span className="text-4xl text-white font-bold">B</span>
         </div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
+        <h1 className="text-2xl font-medium text-gray-900 mb-1">
           BizChat
         </h1>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+        <p className="text-[15px] text-gray-500">
           Commerce-first messaging
         </p>
       </div>
 
-      {/* Phone Entry Card */}
-      <div className="glass-card w-full max-w-sm p-7 animate-fade-up" style={{ animationDelay: '100ms' }}>
-        <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-          Enter your phone number
-        </h2>
-        <p className="text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>
-          We'll send you a verification code
-        </p>
+      {/* Phone Entry */}
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h2 className="text-[17px] font-medium text-gray-900 mb-1">
+            Enter your phone number
+          </h2>
+          <p className="text-[14px] text-gray-500">
+            We'll send you a verification code
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Phone input with country selector */}
-          <div className="flex gap-2 mb-4">
+          {/* Phone Input */}
+          <div className="flex items-center mb-6 h-14 border-b-2 border-[#128C7E]">
             {/* Country code button */}
-            <div className="relative">
+            <div className="relative h-full flex items-center">
               <button
                 type="button"
                 onClick={() => setShowCountry(!showCountry)}
-                className="h-14 px-3 rounded-xl flex items-center gap-2 transition-all touch-target"
-                style={{
-                  background: 'var(--color-surface)',
-                  border: '1.5px solid var(--glass-border)',
-                  color: 'var(--color-text-primary)',
-                  minWidth: '90px',
-                }}
+                className="h-12 px-3 flex items-center gap-1.5 text-gray-900 active:bg-gray-50 rounded transition-colors"
               >
                 <span className="text-xl">{country.flag}</span>
-                <span className="text-sm font-medium">{country.code}</span>
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="ml-1 opacity-50">
+                <span className="text-[15px] font-medium">{country.code}</span>
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="ml-0.5 text-gray-400">
                   <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
 
               {/* Country dropdown */}
               {showCountry && (
-                <div className="absolute top-full left-0 mt-2 w-52 glass-card p-2 z-50 animate-scale-in"
-                  style={{ boxShadow: '0 8px 30px rgba(91, 63, 217, 0.15)' }}>
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-50">
                   {COUNTRY_CODES.map(c => (
                     <button
                       key={c.code}
                       type="button"
                       onClick={() => { setCountry(c); setShowCountry(false); inputRef.current?.focus() }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors hover:bg-[var(--color-primary-light)]"
-                      style={{ color: 'var(--color-text-primary)' }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-gray-900 active:bg-gray-50 transition-colors"
                     >
                       <span className="text-xl">{c.flag}</span>
-                      <span className="text-sm font-medium flex-1">{c.name}</span>
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{c.code}</span>
+                      <span className="text-[14px] font-medium flex-1">{c.name}</span>
+                      <span className="text-[13px] text-gray-500">{c.code}</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Divider */}
+            <div className="w-px h-6 mx-1 bg-gray-300" />
 
             {/* Phone number input */}
             <input
@@ -133,43 +113,28 @@ export default function AuthPage() {
               value={phone}
               onChange={e => {
                 const val = e.target.value.replace(/\D/g, '')
-                if (val.length <= 10) setPhone(val)
+                if (val.length <= 15) setPhone(val)
                 if (error) setError('')
               }}
               autoFocus
-              className="flex-1 h-14 px-4 rounded-xl text-lg font-medium outline-none transition-all"
-              style={{
-                background: 'var(--color-surface)',
-                border: '1.5px solid var(--glass-border)',
-                color: 'var(--color-text-primary)',
-                caretColor: 'var(--color-primary)',
-              }}
-              onFocus={e => (e.target.style.borderColor = 'var(--color-primary)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--glass-border)')}
+              className="flex-1 h-full px-2 bg-transparent text-[17px] font-medium outline-none text-gray-900 placeholder:text-gray-400"
             />
           </div>
 
-          {/* Error message */}
+          {/* Error */}
           {error && (
-            <p className="text-xs mb-3 animate-fade-up" style={{ color: 'var(--color-error)' }}>
-              {error}
-            </p>
+            <p className="text-[13px] text-red-500 mb-3">{error}</p>
           )}
 
-          {/* Submit button */}
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading || phone.length < 10}
-            className="w-full h-14 rounded-xl font-semibold text-white text-sm transition-all touch-target"
-            style={{
-              background: phone.length >= 10
-                ? 'linear-gradient(135deg, var(--color-primary), var(--color-primary-mid))'
-                : 'var(--color-surface)',
-              color: phone.length >= 10 ? '#fff' : 'var(--color-text-muted)',
-              opacity: loading ? 0.7 : 1,
-              boxShadow: phone.length >= 10 ? '0 4px 20px rgba(91, 63, 217, 0.3)' : 'none',
-              transform: loading ? 'scale(0.98)' : 'scale(1)',
-            }}
+            className={`w-full h-14 rounded-full font-medium text-[16px] transition-all ${
+              phone.length >= 10
+                ? 'bg-[#128C7E] text-white active:bg-[#075E54]'
+                : 'bg-gray-200 text-gray-400'
+            } ${loading ? 'opacity-70' : ''}`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -184,7 +149,7 @@ export default function AuthPage() {
       </div>
 
       {/* Footer */}
-      <p className="mt-8 text-xs text-center max-w-xs animate-fade-up" style={{ color: 'var(--color-text-muted)', animationDelay: '200ms' }}>
+      <p className="mt-8 text-[13px] text-center text-gray-500 max-w-xs">
         By continuing, you agree to our Terms of Service and Privacy Policy
       </p>
     </div>

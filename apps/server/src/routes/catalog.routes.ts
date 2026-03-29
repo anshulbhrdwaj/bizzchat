@@ -39,6 +39,39 @@ function ensureUploadDir(subdir: string) {
 
 // ─── Collections ─────────────────────────────────────────
 
+// GET /manager — get all collections with products for the currently authenticated business
+router.get('/manager', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
+  try {
+    const collections = await prisma.catalogCollection.findMany({
+      where: { businessId: req.businessId },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        productCollections: {
+          include: {
+            product: {
+              include: {
+                images: { orderBy: { sortOrder: 'asc' } },
+                variantGroups: { include: { values: true } },
+              }
+            }
+          }
+        }
+      }
+    })
+    
+    // Map productCollections back to products array
+    const mapped = collections.map(c => ({
+      ...c,
+      products: c.productCollections.map(pc => pc.product)
+    }))
+    
+    res.json({ collections: mapped })
+  } catch (error) {
+    logger.error('Get catalog manager error', { error })
+    res.status(500).json({ error: 'Failed to fetch catalog' })
+  }
+})
+
 // GET /business/:id/collections — public
 router.get('/business/:id/collections', async (req, res) => {
   try {
@@ -79,6 +112,30 @@ router.get('/collections/:id/products', async (req, res) => {
   } catch (error) {
     logger.error('Get collection products error', { error })
     res.status(500).json({ error: 'Failed to fetch products' })
+  }
+})
+
+// POST /collections/:id/products — link product to collection
+router.post('/collections/:id/products', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
+  try {
+    const { productId } = req.body
+    
+    // Verify collection ownership
+    const collection = await prisma.catalogCollection.findFirst({
+      where: { id: req.params.id, businessId: req.businessId }
+    })
+    if (!collection) {
+      res.status(404).json({ error: 'Collection not found' })
+      return
+    }
+
+    const pc = await prisma.productCollection.create({
+      data: { collectionId: req.params.id, productId }
+    })
+    res.status(201).json(pc)
+  } catch (error) {
+    logger.error('Link product to collection error', { error })
+    res.status(500).json({ error: 'Failed to link product' })
   }
 })
 
@@ -161,6 +218,27 @@ router.patch('/collections/reorder', requireAuth, requireBusinessOwner, validate
 })
 
 // ─── Products ────────────────────────────────────────────
+
+// GET /products/:id — public product details
+router.get('/products/:id', async (req, res) => {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.id, isActive: true },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } },
+        variantGroups: { include: { values: { orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } },
+      },
+    })
+    if (!product) {
+      res.status(404).json({ error: 'Product not found' })
+      return
+    }
+    res.json(product)
+  } catch (error) {
+    logger.error('Get product error', { error })
+    res.status(500).json({ error: 'Failed to fetch product' })
+  }
+})
 
 // POST /products — create
 router.post('/products', requireAuth, requireBusinessOwner, validateBody(createProductSchema), async (req: AuthRequest, res) => {

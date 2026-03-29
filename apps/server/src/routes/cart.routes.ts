@@ -7,6 +7,41 @@ import { addCartItemSchema, updateCartItemSchema } from '@bizchat/shared'
 
 const router: Router = Router()
 
+// GET /all — get all active carts for the user
+router.get('/all', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const carts = await prisma.cart.findMany({
+      where: { userId: req.userId!, status: 'ACTIVE' },
+      include: { 
+        items: {
+          include: {
+            product: { include: { images: true } },
+            variant: true
+          }
+        }
+      }
+    })
+    // Fetch business details for each cart
+    const businessIds = [...new Set(carts.map(c => c.businessId))]
+    const businesses = await prisma.businessProfile.findMany({
+      where: { id: { in: businessIds } },
+      select: { id: true, name: true, logoUrl: true, coverUrl: true }
+    })
+    const bMap = new Map(businesses.map(b => [b.id, b]))
+    
+    // Attach business to cart
+    const enriched = carts.map(c => ({
+      ...c,
+      business: bMap.get(c.businessId)
+    })).filter(c => c.items.length > 0) // Only return carts that actually have items
+
+    res.json(enriched)
+  } catch (error) {
+    logger.error('Get all carts error', { error })
+    res.status(500).json({ error: 'Failed to fetch carts' })
+  }
+})
+
 // GET / — get or create active cart
 router.get('/', requireAuth, async (req: AuthRequest, res) => {
   try {

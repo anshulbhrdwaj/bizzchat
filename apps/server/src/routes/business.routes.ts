@@ -48,6 +48,24 @@ router.get('/profile', requireAuth, requireBusinessOwner, async (req: AuthReques
   }
 })
 
+// GET /:id/profile — public business profile
+router.get('/:id/profile', async (req, res) => {
+  try {
+    const profile = await prisma.businessProfile.findUnique({
+      where: { id: req.params.id },
+      include: { user: { select: { isOnline: true, lastSeen: true } } }
+    })
+    if (!profile) {
+      res.status(404).json({ error: 'Business not found' })
+      return
+    }
+    res.json(profile)
+  } catch (error) {
+    logger.error('Get public business profile error', { error })
+    res.status(500).json({ error: 'Failed to fetch business profile' })
+  }
+})
+
 // POST /profile — create profile
 router.post('/profile', requireAuth, validateBody(createBusinessProfileSchema), async (req: AuthRequest, res) => {
   try {
@@ -130,5 +148,47 @@ router.post('/profile/cover', requireAuth, requireBusinessOwner, upload.single('
   }
 })
 
+// GET /dashboard — business KPIs and recent orders
+router.get('/dashboard', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
+  try {
+    const totalOrders = await prisma.order.count({ where: { businessId: req.businessId } })
+    const pendingOrders = await prisma.order.count({ where: { businessId: req.businessId, status: 'PENDING' } })
+    
+    // Revenue from DELIVERED orders
+    const revenueAgg = await prisma.order.aggregate({
+      where: { businessId: req.businessId, status: 'DELIVERED' },
+      _sum: { total: true },
+    })
+    const revenue = revenueAgg._sum.total ? Number(revenueAgg._sum.total) : 0
+
+    // Distinct customers
+    const uniqueUsers = await prisma.order.findMany({
+      where: { businessId: req.businessId },
+      select: { userId: true },
+      distinct: ['userId'],
+    })
+    const customers = uniqueUsers.length
+
+    const recentOrders = await prisma.order.findMany({
+      where: { businessId: req.businessId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        user: { select: { id: true, name: true, phone: true } },
+        items: true,
+      },
+    })
+
+    res.json({
+      kpis: { totalOrders, pendingOrders, revenue, customers },
+      recentOrders,
+    })
+  } catch (error) {
+    logger.error('Get dashboard error', { error })
+    res.status(500).json({ error: 'Failed to fetch dashboard' })
+  }
+})
+
 export default router
+
 

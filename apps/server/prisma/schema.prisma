@@ -24,6 +24,8 @@ model User {
   orders        Order[]
   sharedCartsReceived SharedCart[]     @relation("SharedCartRecipient")
   orderStatusChanges  OrderStatusHistory[]
+  contacts      Contact[] @relation("UserContacts")
+  contactOf     Contact[] @relation("ContactOf")
 }
 
 model RefreshToken {
@@ -325,4 +327,17 @@ model OtpCode {
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
   @@index([phone])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserContacts", fields: [userId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   User     @relation("ContactOf", fields: [contactId], references: [id], onDelete: Cascade)
+  savedName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, contactId])
 }
