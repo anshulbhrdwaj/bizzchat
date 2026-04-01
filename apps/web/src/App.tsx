@@ -17,7 +17,6 @@ const AppShell = lazy(() => import('@/pages/AppShell'))
 const ChatListPage = lazy(() => import('@/pages/ChatListPage'))
 const ChatWindowPage = lazy(() => import('@/pages/ChatWindowPage'))
 const CatalogPage = lazy(() => import('@/pages/CatalogPage'))
-const ProductDetailPage = lazy(() => import('@/pages/ProductDetailPage'))
 const CartPage = lazy(() => import('@/pages/CartPage'))
 const OrdersPage = lazy(() => import('@/pages/OrdersPage'))
 const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage'))
@@ -116,7 +115,6 @@ export default function App() {
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/catalog" element={<CatalogsIndexPage />} />
               <Route path="/catalog/:businessId" element={<CatalogPage />} />
-              <Route path="/catalog/:businessId/product/:productId" element={<ProductDetailPage />} />
               <Route path="/cart" element={<CartsIndexPage />} />
               <Route path="/cart/:businessId" element={<CartPage />} />
               <Route path="/orders" element={<OrdersPage />} />

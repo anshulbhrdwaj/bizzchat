@@ -42,35 +42,57 @@ function ensureUploadDir(subdir: string) {
 // GET /manager — get all collections with products for the currently authenticated business
 router.get('/manager', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
   try {
-    const collections = await prisma.catalogCollection.findMany({
-      where: { businessId: req.businessId },
-      orderBy: { sortOrder: 'asc' },
-      include: {
-        productCollections: {
-          include: {
-            product: {
-              include: {
-                images: { orderBy: { sortOrder: 'asc' } },
-                variantGroups: { include: { values: true } },
+    const [collections, allProducts] = await Promise.all([
+      prisma.catalogCollection.findMany({
+        where: { businessId: req.businessId },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          productCollections: {
+            include: {
+              product: {
+                include: {
+                  images: { orderBy: { sortOrder: 'asc' } },
+                  variantGroups: { include: { values: true } },
+                }
               }
             }
           }
         }
-      }
-    })
-    
+      }),
+      // Fetch ALL active products for this business (for standalone display)
+      prisma.product.findMany({
+        where: { businessId: req.businessId, isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          images: { orderBy: { sortOrder: 'asc' } },
+          variantGroups: { include: { values: true } },
+          collections: { select: { collectionId: true } },
+        },
+      }),
+    ])
+
     // Map productCollections back to products array
     const mapped = collections.map(c => ({
       ...c,
       products: c.productCollections.map(pc => pc.product)
     }))
-    
-    res.json({ collections: mapped })
+
+    // Identify products not in any collection (standalone)
+    const collectionLinkedIds = new Set(
+      allProducts.flatMap((p: any) => p.collections.map((c: any) => p.id))
+    )
+    // Use a cleaner approach: products where collections is empty
+    const standaloneProducts = allProducts
+      .filter((p: any) => p.collections.length === 0)
+      .map((p: any) => { const { collections: _, ...rest } = p; return rest })
+
+    res.json({ collections: mapped, standaloneProducts })
   } catch (error) {
     logger.error('Get catalog manager error', { error })
     res.status(500).json({ error: 'Failed to fetch catalog' })
   }
 })
+
 
 // GET /business/:id/collections — public
 router.get('/business/:id/collections', async (req, res) => {
@@ -87,16 +109,53 @@ router.get('/business/:id/collections', async (req, res) => {
   }
 })
 
+// GET /business/:id/products — all active products for a business (powers "All Items" virtual collection)
+router.get('/business/:id/products', async (req, res) => {
+  try {
+    const { cursor, limit = '20', q } = req.query
+    const take = Math.min(parseInt(limit as string, 10), 50)
+    
+    const whereClause: any = { businessId: req.params.id, isActive: true }
+    if (q && typeof q === 'string') {
+      whereClause.name = { contains: q, mode: 'insensitive' }
+    }
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor as string }, skip: 1 } : {}),
+      orderBy: { sortOrder: 'asc' },
+      include: { images: { orderBy: { sortOrder: 'asc' } } },
+    })
+    const hasMore = products.length > take
+    if (hasMore) products.pop()
+    res.json({
+      data: products,
+      cursor: products.length > 0 ? products[products.length - 1].id : null,
+      hasMore,
+    })
+  } catch (error) {
+    logger.error('Get all business products error', { error })
+    res.status(500).json({ error: 'Failed to fetch products' })
+  }
+})
+
 // GET /collections/:id/products — paginated
 router.get('/collections/:id/products', async (req, res) => {
   try {
-    const { cursor, limit = '20' } = req.query
+    const { cursor, limit = '20', q } = req.query
     const take = Math.min(parseInt(limit as string, 10), 50)
+    
+    const whereClause: any = {
+      collections: { some: { collectionId: req.params.id } },
+      isActive: true,
+    }
+    if (q && typeof q === 'string') {
+      whereClause.name = { contains: q, mode: 'insensitive' }
+    }
+
     const products = await prisma.product.findMany({
-      where: {
-        collections: { some: { collectionId: req.params.id } },
-        isActive: true,
-      },
+      where: whereClause,
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor as string }, skip: 1 } : {}),
       orderBy: { sortOrder: 'asc' },
@@ -115,10 +174,10 @@ router.get('/collections/:id/products', async (req, res) => {
   }
 })
 
-// POST /collections/:id/products — link product to collection
+// POST /collections/:id/products — link product(s) to collection
 router.post('/collections/:id/products', requireAuth, requireBusinessOwner, async (req: AuthRequest, res) => {
   try {
-    const { productId } = req.body
+    const { productId, productIds } = req.body
     
     // Verify collection ownership
     const collection = await prisma.catalogCollection.findFirst({
@@ -129,10 +188,22 @@ router.post('/collections/:id/products', requireAuth, requireBusinessOwner, asyn
       return
     }
 
-    const pc = await prisma.productCollection.create({
-      data: { collectionId: req.params.id, productId }
-    })
-    res.status(201).json(pc)
+    if (productIds && Array.isArray(productIds)) {
+      // Bulk insert ignoring duplicates
+      await prisma.productCollection.createMany({
+        data: productIds.map(id => ({ collectionId: req.params.id, productId: id })),
+        skipDuplicates: true,
+      })
+      res.status(201).json({ success: true, count: productIds.length })
+    } else if (productId) {
+      // Single insert
+      const pc = await prisma.productCollection.create({
+        data: { collectionId: req.params.id, productId }
+      })
+      res.status(201).json(pc)
+    } else {
+      res.status(400).json({ error: 'productId or productIds required' })
+    }
   } catch (error) {
     logger.error('Link product to collection error', { error })
     res.status(500).json({ error: 'Failed to link product' })

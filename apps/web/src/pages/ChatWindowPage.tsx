@@ -243,9 +243,12 @@ export default function ChatWindowPage() {
     return (
       <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: 'var(--color-chat-bg)' }}>
         {/* Loading header */}
-        <header className="h-14 px-2 flex items-center gap-2 shrink-0 bg-[#075E54] text-white">
+        <header className="px-2 flex items-center shrink-0 bg-[#075E54] text-white" style={{ height: '60px' }}>
+          <div className="w-10 h-10 flex items-center justify-center mr-1 md:hidden shrink-0">
+            <div className="w-6 h-6 rounded animate-pulse bg-white/20" />
+          </div>
           <div className="w-10 h-10 rounded-full animate-pulse bg-white/20" />
-          <div className="flex-1">
+          <div className="flex-1 ml-3">
             <div className="h-3.5 w-28 rounded animate-pulse mb-1.5 bg-white/20" />
             <div className="h-2.5 w-16 rounded animate-pulse bg-white/10" />
           </div>
@@ -269,22 +272,22 @@ export default function ChatWindowPage() {
   return (
     <div className="relative flex flex-col h-full overflow-hidden" style={{ background: 'var(--color-chat-bg)' }}>
       {/* ── Header ── */}
-      <header className="flex items-center gap-2 px-2 shrink-0 bg-[#075E54] text-white"
-        style={{ height: '56px', paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="flex items-center px-1 shrink-0 bg-[#075E54] text-white"
+        style={{ height: '60px', paddingTop: 'env(safe-area-inset-top)' }}>
         {/* Back button (mobile only) */}
         <button
           onClick={() => navigate('/chats')}
-          className="w-9 h-9 flex items-center justify-center md:hidden shrink-0 rounded-full active:bg-white/10 transition-colors"
+          className="w-10 h-10 flex items-center justify-center md:hidden shrink-0 rounded-full active:bg-white/10 transition-colors"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M20 12H4M4 12L10 6M4 12L10 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
 
         {/* Avatar + Name/Status — tappable to open profile */}
         <button
           onClick={() => setShowProfile(true)}
-          className="flex-1 min-w-0 flex items-center gap-3 h-full text-left"
+          className="flex-1 min-w-0 flex items-center gap-3 h-full text-left pl-1 pr-2"
         >
           <div className="relative shrink-0">
             <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden bg-white/20">
@@ -295,29 +298,39 @@ export default function ChatWindowPage() {
               )}
             </div>
             {isOnline && (
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#25D366] border-2 border-[#075E54]" />
+              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25D366] border-2 border-[#075E54]" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[16px] font-semibold truncate leading-tight">{otherUser?.name || 'Unknown'}</p>
-            <p className="text-[12px] opacity-80 leading-tight">
+            <p className="text-[13px] text-white/80 leading-tight mt-0.5 truncate">
               {isOnline ? 'online' : lastSeen ? `last seen ${lastSeen}` : 'offline'}
             </p>
           </div>
         </button>
 
         {/* Header action buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M22 16.92V19.92C22.0011 20.4813 21.7583 21.0175 21.3296 21.3926C20.9009 21.7678 20.3355 21.9513 19.7699 21.8998C16.5289 21.5564 13.4193 20.4289 10.7 18.6199C8.17 17.0003 6.01 14.8403 4.39 12.3099C2.57 9.58123 1.44267 6.45773 1.1 3.19986C1.04872 2.63584 1.23055 2.07176 1.60353 1.64309C1.97651 1.21441 2.50802 0.97025 3.07 0.969861H6.07C7.0664 0.959861 7.9139 1.67137 8.07 2.65986C8.22272 3.61971 8.48572 4.55927 8.85 5.45986C9.11 6.07986 8.94 6.78986 8.43 7.25986L7.09 8.59986C8.60524 11.2403 10.7597 13.3947 13.4 14.9099L14.74 13.5699C15.21 13.0599 15.92 12.8899 16.54 13.1499C17.4406 13.5142 18.3801 13.7772 19.34 13.9299C20.3399 14.0879 21.0598 14.9499 21.04 15.9599L22 16.92Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <div className="flex items-center shrink-0 pr-1">
+          <button 
+            onClick={() => otherUser && navigate(`/catalog/${otherUser.id}`)}
+            className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors"
+            title="Catalogue"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
             </svg>
           </button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-full active:bg-white/10 transition-colors">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="5" r="1.5" fill="currentColor"/>
-              <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
-              <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+          <button 
+            onClick={() => setShowProfile(true)}
+            className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors ml-1"
+            title="More options"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="5" r="2" fill="currentColor"/>
+              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+              <circle cx="12" cy="19" r="2" fill="currentColor"/>
             </svg>
           </button>
         </div>

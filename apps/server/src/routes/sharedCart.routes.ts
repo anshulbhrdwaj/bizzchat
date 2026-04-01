@@ -8,7 +8,7 @@ import { getIO } from '../index'
 
 const router: Router = Router()
 
-// POST / — business creates + sends shared cart
+// POST / — business creates + sends shared cart (also creates a chat message)
 router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCartSchema), async (req: AuthRequest, res) => {
   try {
     const sharedCart = await prisma.sharedCart.create({
@@ -16,7 +16,11 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
         businessId: req.businessId!,
         recipientId: req.body.recipientId,
         note: req.body.note,
-        expiresAt: req.body.expiresAt ? new Date(req.body.expiresAt) : undefined,
+        expiresAt: req.body.expiresAt
+          ? new Date(req.body.expiresAt)
+          : req.body.expiresInDays
+            ? new Date(Date.now() + req.body.expiresInDays * 86400_000)
+            : undefined,
         items: {
           create: req.body.items.map((item: any) => ({
             productId: item.productId,
@@ -32,20 +36,91 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
       },
     })
 
-    // Emit socket event shared_cart:received to recipient
+    // ── Find or create the DM chat, then insert a SHARED_CART message ──
     try {
       const io = getIO()
-      io.to(`user:${req.body.recipientId}`).emit('shared_cart:received', sharedCart)
-    } catch (socketErr) {
-      logger.warn('Socket emit failed for shared_cart:received', { error: socketErr })
-    }
+      const prismaClient = (await import('../lib/prisma')).default
 
-    res.status(201).json(sharedCart)
+      // Find existing DM between sender and recipient
+      let chat = await prismaClient.chat.findFirst({
+        where: {
+          AND: [
+            { members: { some: { userId: req.userId! } } },
+            { members: { some: { userId: req.body.recipientId } } },
+          ],
+        },
+      })
+
+      // Create DM if none exists
+      if (!chat) {
+        chat = await prismaClient.chat.create({
+          data: {
+            members: {
+              create: [{ userId: req.userId! }, { userId: req.body.recipientId }],
+            },
+          },
+        })
+      }
+
+      // Insert message
+      const message = await prismaClient.message.create({
+        data: {
+          chatId: chat.id,
+          senderId: req.userId!,
+          type: 'SHARED_CART',
+          content: req.body.note || `Shared a catalogue with ${sharedCart.items.length} items`,
+          metadata: {
+            sharedCartId: sharedCart.id,
+            businessId: req.businessId,
+            businessName: sharedCart.business?.name,
+            itemCount: sharedCart.items.length,
+          },
+        },
+        include: {
+          sender: { select: { id: true, name: true, avatarUrl: true } },
+        },
+      })
+
+      // Update chat timestamp
+      await prismaClient.chat.update({
+        where: { id: chat.id },
+        data: { updatedAt: new Date() },
+      })
+
+      // Emit socket events
+      io.to(`chat:${chat.id}`).emit('message:new', message)
+
+      const members = await prismaClient.chatMember.findMany({ where: { chatId: chat.id } })
+      for (const m of members) {
+        const unreadCount = await prismaClient.message.count({
+          where: {
+            chatId: chat.id,
+            createdAt: { gt: m.lastRead },
+            senderId: { not: m.userId },
+          },
+        })
+        io.to(`user:${m.userId}`).emit('chat:updated', {
+          chatId: chat.id,
+          lastMessage: message,
+          unreadCount,
+        })
+      }
+
+      // Also emit the legacy socket event
+      io.to(`user:${req.body.recipientId}`).emit('shared_cart:received', sharedCart)
+
+      // Return enriched response with chatId
+      res.status(201).json({ ...sharedCart, chatId: chat.id, messageId: message.id })
+    } catch (socketErr) {
+      logger.warn('Chat integration failed for shared cart, returning bare result', { error: socketErr })
+      res.status(201).json(sharedCart)
+    }
   } catch (error) {
     logger.error('Create shared cart error', { error })
     res.status(500).json({ error: 'Failed to create shared cart' })
   }
 })
+
 
 // GET /:id — full detail
 router.get('/:id', requireAuth, async (req: AuthRequest, res) => {

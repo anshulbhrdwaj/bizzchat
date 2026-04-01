@@ -208,7 +208,7 @@ interface NavTab {
 
 const NAV_TABS: NavTab[] = [
   { icon: ChatIcon, label: "Chats", path: "/chats", match: ["/chats"] },
-  // { icon: ContactsIcon, label: 'Contacts', path: '/contacts', match: ['/contacts'] },
+  { icon: ContactsIcon, label: 'Contacts', path: '/contacts', match: ['/contacts'] },
   // { icon: CatalogIcon, label: 'Catalog', path: '/catalog', match: ['/catalog'] },
   { icon: CartIcon, label: "Cart", path: "/cart", match: ["/cart"] },
   { icon: OrdersIcon, label: "Orders", path: "/orders", match: ["/orders"] },
