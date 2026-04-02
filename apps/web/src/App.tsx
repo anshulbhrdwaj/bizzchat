@@ -27,6 +27,9 @@ const CatalogManagerPage = lazy(() => import('@/pages/CatalogManagerPage'))
 const SharedCartCreatorPage = lazy(() => import('@/pages/SharedCartCreatorPage'))
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
 const BusinessSetupPage = lazy(() => import('@/pages/BusinessSetupPage'))
+const ProfileEditPage = lazy(() => import('@/pages/ProfileEditPage'))
+const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'))
+const TermsPage = lazy(() => import('@/pages/TermsPage'))
 
 // New nav index pages
 const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
@@ -130,6 +133,9 @@ export default function App() {
               </Route>
 
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings/profile" element={<ProfileEditPage />} />
+              <Route path="/settings/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/settings/terms" element={<TermsPage />} />
               <Route path="/business/setup" element={<BusinessSetupPage />} />
             </Route>
           </Route>
