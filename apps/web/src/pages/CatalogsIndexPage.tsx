@@ -23,11 +23,11 @@ export default function CatalogsIndexPage() {
   })
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      <header className="shrink-0 safe-area-top bg-[#075E54] text-white">
-        <div className="px-4 py-3">
-          <h1 className="text-[20px] font-medium">Catalogs</h1>
-          <p className="text-[13px] text-white/70">Businesses you've chatted with</p>
+    <div className="flex-1 flex flex-col bg-[#F0F2F5] overflow-hidden">
+      <header className="shrink-0 safe-area-top bg-[#075E54] text-white shadow-sm">
+        <div className="px-4 py-4">
+          <h1 className="text-[20px] font-bold tracking-tight">Catalogs</h1>
+          <p className="text-[13px] text-white/70 mt-0.5">Businesses you've chatted with</p>
         </div>
       </header>
 

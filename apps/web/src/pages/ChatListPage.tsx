@@ -45,7 +45,7 @@ export default function ChatListPage() {
   /* ─── Loading ─────────────────────────────────────────── */
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col bg-[#F0F2F5]">
         <ChatHeader
           showSearch={showSearch}
           search={search}
@@ -53,18 +53,20 @@ export default function ChatListPage() {
           onToggleSearch={setShowSearch}
         />
         <div className="flex-1 overflow-y-auto pb-20 md:pb-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 px-4 py-3 animate-pulse border-b border-gray-100"
-            >
-              <div className="w-[50px] h-[50px] rounded-full bg-gray-200 shrink-0" />
-              <div className="flex-1">
-                <div className="h-4 w-32 rounded bg-gray-200 mb-2" />
-                <div className="h-3 w-48 rounded bg-gray-100" />
+          <div className="mx-4 mt-4 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-4 py-3.5 animate-pulse"
+              >
+                <div className="w-[50px] h-[50px] rounded-full bg-gray-200 shrink-0" />
+                <div className="flex-1">
+                  <div className="h-4 w-32 rounded bg-gray-200 mb-2" />
+                  <div className="h-3 w-48 rounded bg-gray-100" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -73,7 +75,7 @@ export default function ChatListPage() {
   /* ─── Error ───────────────────────────────────────────── */
   if (error) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col bg-[#F0F2F5]">
         <ChatHeader
           showSearch={showSearch}
           search={search}
@@ -84,7 +86,7 @@ export default function ChatListPage() {
           <p className="text-[15px] text-gray-600">Failed to load chats</p>
           <button
             onClick={() => refetch()}
-            className="px-6 py-2.5 rounded bg-[#128C7E] text-white text-[14px] font-medium"
+            className="px-6 py-2.5 rounded-2xl bg-[#128C7E] text-white text-[14px] font-medium"
           >
             Retry
           </button>
@@ -96,7 +98,7 @@ export default function ChatListPage() {
   /* ─── Empty ───────────────────────────────────────────── */
   if (filtered.length === 0 && !search) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col bg-[#F0F2F5]">
         <ChatHeader
           showSearch={showSearch}
           search={search}
@@ -104,11 +106,11 @@ export default function ChatListPage() {
           onToggleSearch={setShowSearch}
         />
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8">
-          <span className="text-5xl text-gray-300">💬</span>
-          <p className="text-[15px] text-gray-600 text-center">
+          <span className="text-5xl mb-2">💬</span>
+          <p className="text-[17px] font-semibold text-gray-800 text-center">
             No conversations yet
           </p>
-          <p className="text-[13px] text-gray-400 text-center">
+          <p className="text-[14px] text-gray-500 text-center">
             Start chatting with businesses or contacts
           </p>
         </div>
@@ -118,7 +120,7 @@ export default function ChatListPage() {
 
   /* ─── Chat List ───────────────────────────────────────── */
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-[#F0F2F5] overflow-hidden">
       <ChatHeader
         showSearch={showSearch}
         search={search}
@@ -127,97 +129,101 @@ export default function ChatListPage() {
       />
 
       <div className="flex-1 overflow-y-auto pb-20 md:pb-4">
-        {filtered.map((chat) => {
-          const other = getOtherUser(chat);
-          const isOnline = presence[other.id]?.isOnline ?? other.isOnline;
-          const lastMsg = chat.lastMessage;
-          const unread = chat.unreadCount || 0;
+        {filtered.length > 0 && (
+          <div className="mx-4 mt-4 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            {filtered.map((chat, idx) => {
+              const other = getOtherUser(chat);
+              const isOnline = presence[other.id]?.isOnline ?? other.isOnline;
+              const lastMsg = chat.lastMessage;
+              const unread = chat.unreadCount || 0;
 
-          return (
-            <button
-              key={chat.id}
-              onClick={() => navigate(`/chats/${chat.id}`)}
-              className="w-full flex items-stretch text-left active:bg-gray-100 transition-colors bg-white mt-[1px]"
-            >
-              {/* Avatar */}
-              <div className="relative shrink-0 pl-4 py-2.5 pr-3 flex items-center">
-                <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center overflow-hidden bg-gray-200">
-                  {other.avatarUrl ? (
-                    <img
-                      src={other.avatarUrl}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <svg
-                      width="28"
-                      height="28"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#8696A0"
-                      strokeWidth="1.5"
-                    >
-                      <path
-                        d="M20 21V19C20 16.24 15.5 15 12 15C8.5 15 4 16.24 4 19V21"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <circle
-                        cx="12"
-                        cy="8"
-                        r="4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </div>
-                {isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25D366] border-2 border-white" />
-                )}
-              </div>
+              return (
+                <button
+                  key={chat.id}
+                  onClick={() => navigate(`/chats/${chat.id}`)}
+                  className={`w-full flex items-stretch text-left active:bg-gray-50 transition-colors bg-white ${idx < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}
+                >
+                  {/* Avatar */}
+                  <div className="relative shrink-0 pl-4 py-3 pr-3 flex items-center">
+                    <div className="w-[50px] h-[50px] rounded-full flex items-center justify-center overflow-hidden bg-gray-100">
+                      {other.avatarUrl ? (
+                        <img
+                          src={other.avatarUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <svg
+                          width="26"
+                          height="26"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#8696A0"
+                          strokeWidth="1.5"
+                        >
+                          <path
+                            d="M20 21V19C20 16.24 15.5 15 12 15C8.5 15 4 16.24 4 19V21"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx="12"
+                            cy="8"
+                            r="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    {isOnline && (
+                      <div className="absolute bottom-3 right-2.5 w-3.5 h-3.5 rounded-full bg-[#25D366] border-2 border-white" />
+                    )}
+                  </div>
 
-              <div className="flex-1 min-w-0 py-3 pr-4 border-b border-gray-100 flex flex-col justify-center">
-                <div className="flex items-center justify-between gap-2 mb-0.5">
-                  <span
-                    className={`text-[17px] truncate ${unread > 0 ? "font-medium text-gray-900" : "text-gray-900"}`}
-                  >
-                    {other.name || other.phone}
-                  </span>
-                  <span
-                    className={`text-[12px] shrink-0 ${unread > 0 ? "text-[#25D366] font-medium" : "text-gray-500"}`}
-                  >
-                    {lastMsg ? formatTimestamp(lastMsg.createdAt) : ""}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <p
-                    className={`text-[15px] truncate flex-1 leading-snug ${unread > 0 ? "text-gray-700" : "text-gray-500"}`}
-                  >
-                    {lastMsg?.isDeleted
-                      ? "🚫 This message was deleted"
-                      : lastMsg?.type === "TEXT"
-                        ? lastMsg.content
-                        : lastMsg?.type === "IMAGE"
-                          ? "📷 Photo"
-                          : lastMsg?.type === "PRODUCT_CARD"
-                            ? "🛍️ Product"
-                            : lastMsg?.type === "SHARED_CART"
-                              ? "🛒 Shared Cart"
-                              : lastMsg?.type === "ORDER_UPDATE"
-                                ? "📦 Order Update"
-                                : "Start a conversation"}
-                  </p>
-                  {unread > 0 && (
-                    <span className="min-w-[20px] h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white px-1.5 bg-[#25D366]">
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+                  <div className="flex-1 min-w-0 py-3.5 pr-4 flex flex-col justify-center">
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <span
+                        className={`text-[16px] truncate ${unread > 0 ? "font-semibold text-gray-900" : "font-medium text-gray-900"}`}
+                      >
+                        {other.name || other.phone}
+                      </span>
+                      <span
+                        className={`text-[12px] shrink-0 ${unread > 0 ? "text-[#128C7E] font-semibold" : "text-gray-400"}`}
+                      >
+                        {lastMsg ? formatTimestamp(lastMsg.createdAt) : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p
+                        className={`text-[14px] truncate flex-1 leading-snug ${unread > 0 ? "text-gray-700 font-medium" : "text-gray-500"}`}
+                      >
+                        {lastMsg?.isDeleted
+                          ? "🚫 This message was deleted"
+                          : lastMsg?.type === "TEXT"
+                            ? lastMsg.content
+                            : lastMsg?.type === "IMAGE"
+                              ? "📷 Photo"
+                              : lastMsg?.type === "PRODUCT_CARD"
+                                ? "🛍️ Product"
+                                : lastMsg?.type === "SHARED_CART"
+                                  ? "🛒 Shared Cart"
+                                  : lastMsg?.type === "ORDER_UPDATE"
+                                    ? "📦 Order Update"
+                                    : "Start a conversation"}
+                      </p>
+                      {unread > 0 && (
+                        <span className="min-w-[20px] h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white px-1.5 bg-[#25D366]">
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {filtered.length === 0 && search && (
           <div className="flex flex-col items-center py-16">
@@ -231,7 +237,7 @@ export default function ChatListPage() {
       {/* FAB */}
       <button
         onClick={() => navigate("/contacts")}
-        className="fixed bottom-24 right-6 md:bottom-8 w-14 h-14 rounded-full flex items-center justify-center bg-[#25D366] shadow-lg z-10"
+        className="fixed bottom-24 right-6 md:bottom-8 w-14 h-14 rounded-full flex items-center justify-center bg-[#25D366] shadow-lg shadow-green-500/25 z-10 active:scale-95 transition-transform"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
@@ -246,7 +252,7 @@ export default function ChatListPage() {
   );
 }
 
-/* ─── WhatsApp Header ─────────────────────────────────── */
+/* ─── Header ──────────────────────────────────────────── */
 function ChatHeader({
   showSearch,
   search,
@@ -262,15 +268,15 @@ function ChatHeader({
   return (
     <header className="shrink-0 safe-area-top">
       {showSearch ? (
-        <div className="flex items-center gap-2 px-2 py-2 bg-white border-b border-gray-200">
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-[#075E54]">
           <button
             onClick={() => {
               onSearch("");
               onToggleSearch(false);
             }}
-            className="w-10 h-10 flex items-center justify-center text-gray-600"
+            className="w-10 h-10 flex items-center justify-center text-white/80 rounded-full active:bg-white/10 transition-colors"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path
                 d="M20 12H4M4 12L10 6M4 12L10 18"
                 stroke="currentColor"
@@ -282,20 +288,20 @@ function ChatHeader({
           </button>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search chats..."
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             autoFocus
-            className="flex-1 h-10 px-3 rounded bg-gray-100 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none"
+            className="flex-1 h-9 px-3 rounded-xl bg-white/15 text-[15px] text-white placeholder:text-white/50 outline-none"
           />
         </div>
       ) : (
-        <div className="flex items-center justify-between px-4 py-3 bg-[#075E54] text-white">
-          <h1 className="text-[20px] font-medium">BizChat</h1>
+        <div className="flex items-center justify-between px-4 py-3.5 bg-[#075E54] text-white shadow-sm">
+          <h1 className="text-[20px] font-bold tracking-tight">BizChat</h1>
           <div className="flex items-center gap-1">
             <button
               onClick={() => onToggleSearch(true)}
-              className="w-10 h-10 flex items-center justify-center rounded-full"
+              className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors"
             >
               <svg
                 width="22"
@@ -313,7 +319,7 @@ function ChatHeader({
               </svg>
             </button>
             <button
-              className="w-10 h-10 flex items-center justify-center rounded-full"
+              className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors"
               onClick={() => navigateTo("/settings")}
             >
               <svg
