@@ -65,18 +65,18 @@ export default function ProfileEditPage() {
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Header */}
-      <header className="px-4 py-3 flex items-center gap-3 safe-area-top shadow-sm border-b border-gray-100 shrink-0">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full active:bg-gray-100 transition-colors">
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
+      <header className="px-4 py-3 flex items-center gap-3 safe-area-top shadow-sm border-b border-gray-100 shrink-0 bg-wa-teal-dark">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full transition-colors">
+          <ChevronLeft className="w-6 h-6 text-gray-100" />
         </button>
-        <h1 className="text-[18px] font-bold text-gray-900 flex-1">Edit Profile</h1>
+        <h1 className="text-[18px] font-bold text-gray-50 flex-1">Edit Profile</h1>
         <button 
           onClick={handleSubmit} 
           disabled={loading || !name.trim() || (name.trim() === user?.name && !avatar)}
           className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${
             loading || !name.trim() || (name.trim() === user?.name && !avatar) 
-              ? 'bg-gray-50 text-gray-300' 
-              : 'bg-[#128C7E] text-white active:scale-95 shadow-sm'
+              ? 'text-gray-300' 
+              : 'text-white active:scale-95 shadow-sm'
           }`}
         >
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}

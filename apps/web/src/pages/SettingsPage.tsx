@@ -90,11 +90,11 @@ export default function SettingsPage() {
   return (
     <div className="flex-1 flex flex-col bg-[#F8F9FA] overflow-hidden">
       {/* Header */}
-      <header className="px-5 pt-safe-top pb-4 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
-        <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full active:bg-gray-100 transition-colors">
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
+      <header className="px-5 pt-safe-top pb-4 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 bg-wa-teal-dark">
+        <button onClick={() => navigate("/chats")} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full transition-colors">
+          <ChevronLeft className="w-6 h-6 text-gray-100" />
         </button>
-        <h1 className="text-[20px] font-bold text-gray-900">Settings</h1>
+        <h1 className="text-[20px] font-bold text-gray-50">Settings</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto pb-10">
