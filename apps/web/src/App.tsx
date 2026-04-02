@@ -1,50 +1,37 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { initSocket } from '@/lib/socket'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 
+import AuthPage from '@/pages/AuthPage'
+import OTPPage from '@/pages/OTPPage'
+import ProfileSetupPage from '@/pages/ProfileSetupPage'
+import AppShell from '@/pages/AppShell'
+import ChatListPage from '@/pages/ChatListPage'
+import ChatWindowPage from '@/pages/ChatWindowPage'
+import CatalogPage from '@/pages/CatalogPage'
+import CartPage from '@/pages/CartPage'
+import OrdersPage from '@/pages/OrdersPage'
+import OrderDetailPage from '@/pages/OrderDetailPage'
+import SharedCartPage from '@/pages/SharedCartPage'
+import DashboardPage from '@/pages/DashboardPage'
+import OrderManagerPage from '@/pages/OrderManagerPage'
+import CatalogManagerPage from '@/pages/CatalogManagerPage'
+import SharedCartCreatorPage from '@/pages/SharedCartCreatorPage'
+import SettingsPage from '@/pages/SettingsPage'
+import BusinessSetupPage from '@/pages/BusinessSetupPage'
+import ProfileEditPage from '@/pages/ProfileEditPage'
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage'
+import TermsPage from '@/pages/TermsPage'
+import ContactsPage from '@/pages/ContactsPage'
+import CatalogsIndexPage from '@/pages/CatalogsIndexPage'
+import CartsIndexPage from '@/pages/CartsIndexPage'
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30000, retry: 1 } },
 })
-
-// Lazy-loaded pages for <150KB bundle target
-const AuthPage = lazy(() => import('@/pages/AuthPage'))
-const OTPPage = lazy(() => import('@/pages/OTPPage'))
-const ProfileSetupPage = lazy(() => import('@/pages/ProfileSetupPage'))
-const AppShell = lazy(() => import('@/pages/AppShell'))
-const ChatListPage = lazy(() => import('@/pages/ChatListPage'))
-const ChatWindowPage = lazy(() => import('@/pages/ChatWindowPage'))
-const CatalogPage = lazy(() => import('@/pages/CatalogPage'))
-const CartPage = lazy(() => import('@/pages/CartPage'))
-const OrdersPage = lazy(() => import('@/pages/OrdersPage'))
-const OrderDetailPage = lazy(() => import('@/pages/OrderDetailPage'))
-const SharedCartPage = lazy(() => import('@/pages/SharedCartPage'))
-const DashboardPage = lazy(() => import('@/pages/DashboardPage'))
-const OrderManagerPage = lazy(() => import('@/pages/OrderManagerPage'))
-const CatalogManagerPage = lazy(() => import('@/pages/CatalogManagerPage'))
-const SharedCartCreatorPage = lazy(() => import('@/pages/SharedCartCreatorPage'))
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
-const BusinessSetupPage = lazy(() => import('@/pages/BusinessSetupPage'))
-const ProfileEditPage = lazy(() => import('@/pages/ProfileEditPage'))
-const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'))
-const TermsPage = lazy(() => import('@/pages/TermsPage'))
-
-// New nav index pages
-const ContactsPage = lazy(() => import('@/pages/ContactsPage'))
-const CatalogsIndexPage = lazy(() => import('@/pages/CatalogsIndexPage'))
-const CartsIndexPage = lazy(() => import('@/pages/CartsIndexPage'))
-
-// Loading fallback
-function Loading() {
-  return (
-    // <div className="flex-1 flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-    //   <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-    // </div>
-    <></>
-  )
-}
 
 // Route guards
 function AuthGuard() {
@@ -102,48 +89,46 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <div className="mesh-bg" />
-      <Suspense fallback={<Loading />}>
-        <Routes>
-          {/* Public */}
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/auth/otp" element={<OTPPage />} />
-          <Route path="/auth/profile" element={<ProfileSetupPage />} />
+      <Routes>
+        {/* Public */}
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/otp" element={<OTPPage />} />
+        <Route path="/auth/profile" element={<ProfileSetupPage />} />
 
-          {/* Protected */}
-          <Route element={<AuthGuard />}>
-            <Route element={<AppShell />}>
-              <Route path="/" element={<Navigate to="/chats" replace />} />
-              <Route path="/chats" element={<ChatListPage />} />
-              <Route path="/chats/:chatId" element={<ChatWindowPage />} />
-              <Route path="/contacts" element={<ContactsPage />} />
-              <Route path="/catalog" element={<CatalogsIndexPage />} />
-              <Route path="/catalog/:businessId" element={<CatalogPage />} />
-              <Route path="/cart" element={<CartsIndexPage />} />
-              <Route path="/cart/:businessId" element={<CartPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/orders/:orderId" element={<OrderDetailPage />} />
-              <Route path="/shared-cart/:id" element={<SharedCartPage />} />
+        {/* Protected */}
+        <Route element={<AuthGuard />}>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<Navigate to="/chats" replace />} />
+            <Route path="/chats" element={<ChatListPage />} />
+            <Route path="/chats/:chatId" element={<ChatWindowPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/catalog" element={<CatalogsIndexPage />} />
+            <Route path="/catalog/:businessId" element={<CatalogPage />} />
+            <Route path="/cart" element={<CartsIndexPage />} />
+            <Route path="/cart/:businessId" element={<CartPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+            <Route path="/shared-cart/:id" element={<SharedCartPage />} />
 
-              {/* Business owner only */}
-              <Route element={<BusinessGuard />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/dashboard/orders" element={<OrderManagerPage />} />
-                <Route path="/dashboard/catalog" element={<CatalogManagerPage />} />
-                <Route path="/dashboard/shared-cart/new" element={<SharedCartCreatorPage />} />
-              </Route>
-
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/settings/profile" element={<ProfileEditPage />} />
-              <Route path="/settings/privacy" element={<PrivacyPolicyPage />} />
-              <Route path="/settings/terms" element={<TermsPage />} />
-              <Route path="/business/setup" element={<BusinessSetupPage />} />
+            {/* Business owner only */}
+            <Route element={<BusinessGuard />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/dashboard/orders" element={<OrderManagerPage />} />
+              <Route path="/dashboard/catalog" element={<CatalogManagerPage />} />
+              <Route path="/dashboard/shared-cart/new" element={<SharedCartCreatorPage />} />
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <ToastContainer />
-      </Suspense>
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/profile" element={<ProfileEditPage />} />
+            <Route path="/settings/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/settings/terms" element={<TermsPage />} />
+            <Route path="/business/setup" element={<BusinessSetupPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <ToastContainer />
     </BrowserRouter>
     </QueryClientProvider>
   )
