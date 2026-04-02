@@ -128,7 +128,7 @@ export default function ChatInputBar({
       {/* Main Input Row */}
       <div className="flex items-end gap-2 px-2 py-1.5">
         {/* Input Pill */}
-        <div className="relative flex-1 flex items-end bg-white rounded-[26px] shadow-sm overflow-hidden">
+        <div className="relative flex-1 flex items-end bg-white rounded-[26px] shadow-sm">
           {/* Emoji Button */}
           <button
             onClick={() => { setShowEmoji(s => !s); setShowAttachment(false) }}
@@ -163,7 +163,7 @@ export default function ChatInputBar({
           />
 
           {/* Attachment Button (hidden when text) */}
-          {!hasText && (
+          {/* {!hasText && (
             <button
               onClick={() => { setShowAttachment(s => !s); setShowEmoji(false) }}
               className="w-10 h-[48px] shrink-0 flex items-center justify-center text-[#8696A0] transition-colors hover:text-[#128C7E]"
@@ -172,7 +172,7 @@ export default function ChatInputBar({
                 <path d="M21.44 11.05L12.25 20.24C11.1242 21.3658 9.59723 21.9983 8.005 21.9983C6.41277 21.9983 4.88583 21.3658 3.76 20.24C2.63417 19.1142 2.00166 17.5872 2.00166 15.995C2.00166 14.4028 2.63417 12.8758 3.76 11.75L12.95 2.56C13.7006 1.80944 14.7185 1.38778 15.78 1.38778C16.8415 1.38778 17.8594 1.80944 18.61 2.56C19.3606 3.31056 19.7822 4.32854 19.7822 5.39C19.7822 6.45146 19.3606 7.46944 18.61 8.22L9.41 17.41C9.03472 17.7853 8.52573 17.9961 7.995 17.9961C7.46427 17.9961 6.95528 17.7853 6.58 17.41C6.20472 17.0347 5.99389 16.5257 5.99389 15.995C5.99389 15.4643 6.20472 14.9553 6.58 14.58L15.07 6.1" stroke="currentColor" strokeLinecap="round" />
               </svg>
             </button>
-          )}
+          )} */}
 
           {/* Emoji Picker Portal */}
           {showEmoji && (
@@ -183,35 +183,27 @@ export default function ChatInputBar({
           )}
 
           {/* Attachment Menu Portal */}
-          {showAttachment && (
+          {/* {showAttachment && (
             <AttachmentMenu
               onClose={() => setShowAttachment(false)}
               onImageSelect={(file) => onSendFile?.(file, 'image')}
               onDocumentSelect={(file) => onSendFile?.(file, 'document')}
             />
-          )}
+          )} */}
         </div>
 
-        {/* Send / Mic Button */}
+        {/* Send Button */}
         <button
-          onClick={hasText ? handleSend : undefined}
-          disabled={disabled}
-          className="w-[50px] h-[50px] shrink-0 rounded-full flex items-center justify-center shadow-md transition-all active:scale-95"
-          style={{ background: '#128C7E' }}
+          onClick={handleSend}
+          disabled={disabled || !hasText}
+          className={`w-[50px] h-[50px] shrink-0 rounded-full flex items-center justify-center shadow-md transition-all active:scale-95 ${
+            hasText && !disabled ? 'bg-[#128C7E]' : 'bg-gray-300'
+          }`}
         >
-          {hasText ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M22 2L11 13" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <rect x="9" y="2" width="6" height="13" rx="3" stroke="white" strokeWidth="2" fill="none"/>
-              <path d="M5 10C5 10 5 16 12 16C19 16 19 10 19 10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="12" y1="16" x2="12" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="8" y1="21" x2="16" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          )}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M22 2L11 13" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
     </div>
