@@ -31,6 +31,8 @@ export const createBusinessProfileSchema = z.object({
   address: z.string().max(500).optional(),
   website: z.string().url().optional(),
   email: z.string().email().optional(),
+  taxRate: z.number().min(0).max(100).optional(),
+  deliveryCharge: z.number().min(0).optional(),
 })
 
 export const updateBusinessProfileSchema = createBusinessProfileSchema.partial()
@@ -107,7 +109,7 @@ export const createSharedCartSchema = z.object({
   expiresAt: z.string().datetime().optional(),
   items: z.array(z.object({
     productId: z.string(),
-    variantId: z.string().optional(),
+    variantId: z.string().nullable().optional(),
     quantity: z.number().int().positive(),
     note: z.string().max(200).optional(),
   })).min(1),

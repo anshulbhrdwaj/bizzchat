@@ -17,6 +17,19 @@ export interface User {
   lastSeen: string
   createdAt: string
   updatedAt: string
+  savedAddresses?: SavedAddress[]
+}
+
+// ─── Saved Address ───────────────────────────────────────
+
+export interface SavedAddress {
+  id: string
+  userId: string
+  label: string
+  line1: string
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 // ─── Business Profile ────────────────────────────────────

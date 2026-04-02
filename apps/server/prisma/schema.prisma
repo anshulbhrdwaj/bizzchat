@@ -24,8 +24,20 @@ model User {
   orders        Order[]
   sharedCartsReceived SharedCart[]     @relation("SharedCartRecipient")
   orderStatusChanges  OrderStatusHistory[]
+  savedAddresses SavedAddress[]
   contacts      Contact[] @relation("UserContacts")
   contactOf     Contact[] @relation("ContactOf")
+}
+
+model SavedAddress {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   @default("Home")
+  line1     String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model RefreshToken {
@@ -51,6 +63,8 @@ model BusinessProfile {
   address     String?
   website     String?
   email       String?
+  taxRate     Float    @default(18)
+  deliveryCharge Float @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   collections CatalogCollection[]

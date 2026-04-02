@@ -39,10 +39,9 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
     // ── Find or create the DM chat, then insert a SHARED_CART message ──
     try {
       const io = getIO()
-      const prismaClient = (await import('../lib/prisma')).default
 
       // Find existing DM between sender and recipient
-      let chat = await prismaClient.chat.findFirst({
+      let chat = await prisma.chat.findFirst({
         where: {
           AND: [
             { members: { some: { userId: req.userId! } } },
@@ -53,7 +52,7 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
 
       // Create DM if none exists
       if (!chat) {
-        chat = await prismaClient.chat.create({
+        chat = await prisma.chat.create({
           data: {
             members: {
               create: [{ userId: req.userId! }, { userId: req.body.recipientId }],
@@ -63,7 +62,7 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
       }
 
       // Insert message
-      const message = await prismaClient.message.create({
+      const message = await prisma.message.create({
         data: {
           chatId: chat.id,
           senderId: req.userId!,
@@ -82,7 +81,7 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
       })
 
       // Update chat timestamp
-      await prismaClient.chat.update({
+      await prisma.chat.update({
         where: { id: chat.id },
         data: { updatedAt: new Date() },
       })
@@ -90,9 +89,9 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
       // Emit socket events
       io.to(`chat:${chat.id}`).emit('message:new', message)
 
-      const members = await prismaClient.chatMember.findMany({ where: { chatId: chat.id } })
+      const members = await prisma.chatMember.findMany({ where: { chatId: chat.id } })
       for (const m of members) {
-        const unreadCount = await prismaClient.message.count({
+        const unreadCount = await prisma.message.count({
           where: {
             chatId: chat.id,
             createdAt: { gt: m.lastRead },

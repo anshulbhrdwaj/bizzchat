@@ -7,7 +7,7 @@ import { getInitials } from '@/lib/utils'
 // ─────────────────────────────────────────────────────────────────────────────
 // Product Drawer — slides up from the bottom, same-page experience
 // ─────────────────────────────────────────────────────────────────────────────
-function ProductDrawer({
+export function ProductDrawer({
   product,
   businessId,
   onClose,

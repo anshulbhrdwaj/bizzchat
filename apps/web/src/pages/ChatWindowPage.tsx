@@ -311,17 +311,19 @@ export default function ChatWindowPage() {
 
         {/* Header action buttons */}
         <div className="flex items-center shrink-0 pr-1">
-          <button 
-            onClick={() => otherUser && navigate(`/catalog/${otherUser.id}`)}
-            className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors"
-            title="Catalogue"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <path d="M16 10a4 4 0 0 1-8 0"/>
-            </svg>
-          </button>
+          {otherUser?.businessProfile && (
+            <button 
+              onClick={() => navigate(`/catalog/${otherUser.businessProfile.id}`)}
+              className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors"
+              title="Catalogue"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+          )}
           <button 
             onClick={() => setShowProfile(true)}
             className="w-10 h-10 flex items-center justify-center rounded-full active:bg-white/10 transition-colors ml-1"

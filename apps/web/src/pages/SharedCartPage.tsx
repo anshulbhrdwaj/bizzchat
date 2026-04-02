@@ -2,12 +2,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '@/lib/api'
 import { useState } from 'react'
+import { ProductDrawer } from './CatalogPage'
 
 export default function SharedCartPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [addedSuccess, setAddedSuccess] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['shared-cart', id],
@@ -95,9 +97,10 @@ export default function SharedCartPage() {
   const sc = statusColors[status] || statusColors.PENDING
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#F0F2F5]">
-      <div className="flex-1 overflow-y-auto pb-32">
-        {/* Header */}
+    <>
+      <div className="flex-1 flex flex-col overflow-hidden bg-[#F0F2F5]">
+        <div className="flex-1 overflow-y-auto pb-32">
+          {/* Header */}
         <header className="safe-area-top bg-[#075E54] text-white">
           <div className="px-4 py-3 flex items-center gap-3">
             <button
@@ -185,7 +188,7 @@ export default function SharedCartPage() {
               >
                 <button
                   disabled={isExpired}
-                  onClick={() => !isExpired && navigate(`/catalog/${data.business?.id || data.businessId}`)}
+                  onClick={() => !isExpired && setSelectedProduct(item.product)}
                   className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 active:opacity-70 transition-opacity"
                 >
                   {item.product?.images?.[0]?.url ? (
@@ -212,7 +215,7 @@ export default function SharedCartPage() {
                 {/* Individual Add to Cart */}
                 {!isExpired && (
                   <button
-                    onClick={() => navigate(`/catalog/${data.business?.id || data.businessId}`)}
+                    onClick={() => setSelectedProduct(item.product)}
                     className="self-center px-3 py-2 rounded-xl bg-[#128C7E]/8 text-[#128C7E] text-[12px] font-semibold active:bg-[#128C7E]/20 transition-colors shrink-0"
                   >
                     View
@@ -263,5 +266,15 @@ export default function SharedCartPage() {
         </div>
       )}
     </div>
+
+      {/* Product Drawer */}
+      {selectedProduct && (data.business?.id || data.businessId) && (
+        <ProductDrawer
+          product={selectedProduct}
+          businessId={data.business?.id || data.businessId}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
+    </>
   )
 }

@@ -16,6 +16,7 @@ import businessOrderRoutes from './routes/businessOrder.routes'
 import chatRoutes from './routes/chat.routes'
 import userRoutes from './routes/user.routes'
 import contactRoutes from './routes/contact.routes'
+import addressRoutes from './routes/address.routes'
 
 const app: Express = express()
 
@@ -60,6 +61,7 @@ app.use('/api/business/orders', businessOrderRoutes)
 app.use('/api/chats', chatRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/contacts', contactRoutes)
+app.use('/api/addresses', addressRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {

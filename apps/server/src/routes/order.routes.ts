@@ -75,6 +75,16 @@ router.post('/', requireAuth, validateBody(placeOrderSchema), async (req: AuthRe
 
     const subtotal = orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0)
 
+    // Fetch business tax and delivery settings
+    const bizProfile = await prisma.businessProfile.findUnique({
+      where: { id: businessId },
+      select: { taxRate: true, deliveryCharge: true },
+    })
+    const taxRate = bizProfile?.taxRate ?? 0
+    const deliveryCharge = bizProfile?.deliveryCharge ?? 0
+    const tax = Math.round(subtotal * taxRate / 100)
+    const total = subtotal + tax + deliveryCharge
+
     const order = await prisma.$transaction(async (tx) => {
       // Decrement stock without throwing errors if it falls below zero
       for (const item of cart.items) {
@@ -94,7 +104,7 @@ router.post('/', requireAuth, validateBody(placeOrderSchema), async (req: AuthRe
           businessId,
           cartId: cart.id,
           subtotal,
-          total: subtotal, // Tax can be added later
+          total,
           deliveryAddress,
           customerNote,
           items: { create: orderItems },

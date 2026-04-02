@@ -16,7 +16,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res) => {
       include: {
         chat: {
           include: {
-            members: { include: { user: { select: { id: true, name: true, avatarUrl: true, isOnline: true, lastSeen: true } } } },
+            members: { include: { user: { select: { id: true, name: true, avatarUrl: true, isOnline: true, lastSeen: true, businessProfile: true } } } },
             messages: { take: 1, orderBy: { createdAt: 'desc' }, include: { sender: { select: { id: true, name: true } } } },
           },
         },
