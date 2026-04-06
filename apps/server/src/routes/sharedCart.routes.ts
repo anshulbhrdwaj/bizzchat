@@ -31,10 +31,29 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
         },
       },
       include: {
-        items: { include: { product: { include: { images: true } }, variant: true } },
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+                _count: { select: { variantGroups: true } }
+              }
+            },
+            variant: true
+          }
+        },
         business: true,
       },
     })
+
+    const mappedItems = sharedCart.items.map((item: any) => ({
+      ...item,
+      product: {
+        ...item.product,
+        hasVariants: item.product._count.variantGroups > 0
+      }
+    }))
+    const responseData = { ...sharedCart, items: mappedItems }
 
     // ── Find or create the DM chat, then insert a SHARED_CART message ──
     try {
@@ -109,10 +128,10 @@ router.post('/', requireAuth, requireBusinessOwner, validateBody(createSharedCar
       io.to(`user:${req.body.recipientId}`).emit('shared_cart:received', sharedCart)
 
       // Return enriched response with chatId
-      res.status(201).json({ ...sharedCart, chatId: chat.id, messageId: message.id })
+      res.status(201).json({ ...responseData, chatId: chat.id, messageId: message.id })
     } catch (socketErr) {
       logger.warn('Chat integration failed for shared cart, returning bare result', { error: socketErr })
-      res.status(201).json(sharedCart)
+      res.status(201).json(responseData)
     }
   } catch (error) {
     logger.error('Create shared cart error', { error })
@@ -127,7 +146,17 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
     const sharedCart = await prisma.sharedCart.findUnique({
       where: { id: req.params.id },
       include: {
-        items: { include: { product: { include: { images: true } }, variant: true } },
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+                _count: { select: { variantGroups: true } }
+              }
+            },
+            variant: true
+          }
+        },
         business: true,
       },
     })
@@ -135,13 +164,22 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res) => {
       res.status(404).json({ error: 'Shared cart not found' })
       return
     }
+
+    const mappedItems = sharedCart.items.map((item: any) => ({
+      ...item,
+      product: {
+        ...item.product,
+        hasVariants: item.product._count.variantGroups > 0
+      }
+    }))
+    const responseData = { ...sharedCart, items: mappedItems }
     // Only business owner or recipient can view
     const profile = await prisma.businessProfile.findUnique({ where: { userId: req.userId } })
     if (sharedCart.recipientId !== req.userId && profile?.id !== sharedCart.businessId) {
       res.status(403).json({ error: 'Not authorized' })
       return
     }
-    res.json(sharedCart)
+    res.json(responseData)
   } catch (error) {
     logger.error('Get shared cart error', { error })
     res.status(500).json({ error: 'Failed to fetch shared cart' })

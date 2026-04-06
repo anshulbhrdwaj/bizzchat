@@ -125,12 +125,21 @@ router.get('/business/:id/products', async (req, res) => {
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor as string }, skip: 1 } : {}),
       orderBy: { sortOrder: 'asc' },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } },
+        _count: { select: { variantGroups: true } }
+      },
     })
     const hasMore = products.length > take
     if (hasMore) products.pop()
+
+    const mappedProducts = products.map((p: any) => ({
+      ...p,
+      hasVariants: p._count.variantGroups > 0
+    }))
+
     res.json({
-      data: products,
+      data: mappedProducts,
       cursor: products.length > 0 ? products[products.length - 1].id : null,
       hasMore,
     })
@@ -159,12 +168,21 @@ router.get('/collections/:id/products', async (req, res) => {
       take: take + 1,
       ...(cursor ? { cursor: { id: cursor as string }, skip: 1 } : {}),
       orderBy: { sortOrder: 'asc' },
-      include: { images: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } },
+        _count: { select: { variantGroups: true } }
+      },
     })
     const hasMore = products.length > take
     if (hasMore) products.pop()
+
+    const mappedProducts = products.map((p: any) => ({
+      ...p,
+      hasVariants: p._count.variantGroups > 0
+    }))
+
     res.json({
-      data: products,
+      data: mappedProducts,
       cursor: products.length > 0 ? products[products.length - 1].id : null,
       hasMore,
     })

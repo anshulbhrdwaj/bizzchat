@@ -2,14 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import apiClient from '@/lib/api'
 import { useState } from 'react'
-import { ProductDrawer } from './CatalogPage'
+import { ProductRow, Cart } from './CatalogPage'
 
 export default function SharedCartPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [addedSuccess, setAddedSuccess] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['shared-cart', id],
@@ -20,6 +19,17 @@ export default function SharedCartPage() {
     enabled: !!id,
   })
 
+  // Fetch USER's own cart for this business (to enable inline edits)
+  const businessId = data?.business?.id || data?.businessId
+  const { data: cart } = useQuery<Cart>({
+    queryKey: ["cart", businessId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/cart?businessId=${businessId}`);
+      return data;
+    },
+    enabled: !!businessId,
+  });
+
   // Add all items to personal cart
   const addToCart = useMutation({
     mutationFn: async () => {
@@ -28,9 +38,10 @@ export default function SharedCartPage() {
     onSuccess: () => {
       setAddedSuccess(true)
       queryClient.invalidateQueries({ queryKey: ['shared-cart', id] })
+      queryClient.invalidateQueries({ queryKey: ["cart", businessId] })
       // Navigate to the cart after 1.2s so the success animation shows
       setTimeout(() => {
-        navigate(`/cart/${data?.business?.id || data?.businessId}`)
+        navigate(`/cart/${businessId}`)
       }, 1200)
     },
   })
@@ -97,10 +108,9 @@ export default function SharedCartPage() {
   const sc = statusColors[status] || statusColors.PENDING
 
   return (
-    <>
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#F0F2F5]">
-        <div className="flex-1 overflow-y-auto pb-32">
-          {/* Header */}
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#F0F2F5]">
+      <div className="flex-1 overflow-y-auto pb-32">
+        {/* Header */}
         <header className="safe-area-top bg-[#075E54] text-white">
           <div className="px-4 py-3 flex items-center gap-3">
             <button
@@ -144,7 +154,7 @@ export default function SharedCartPage() {
             </div>
             {!isExpired && (
               <button
-                onClick={() => navigate(`/catalog/${data.business?.id || data.businessId}`)}
+                onClick={() => navigate(`/catalog/${businessId}`)}
                 className="px-3 py-1.5 rounded-full bg-white/20 text-[12px] font-semibold text-white active:bg-white/30 transition-colors shrink-0"
               >
                 Full Catalogue
@@ -179,54 +189,20 @@ export default function SharedCartPage() {
         {/* Items list */}
         <div className="mx-4 mt-3 bg-white rounded-2xl border border-gray-200 overflow-hidden" style={{ opacity: isExpired ? 0.5 : 1 }}>
           <p className="px-4 pt-4 pb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Items</p>
-          {items.map((item: any, i: number) => {
-            const price = item.variant?.priceOverride ?? item.product?.basePrice ?? 0
-            return (
-              <div
+          <div className="flex flex-col">
+            {items.map((item: any, i: number) => (
+              <ProductRow
                 key={item.id}
-                className={`flex gap-3 px-4 py-3 ${i < items.length - 1 ? 'border-b border-gray-100' : ''}`}
-              >
-                <button
-                  disabled={isExpired}
-                  onClick={() => !isExpired && setSelectedProduct(item.product)}
-                  className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-100 active:opacity-70 transition-opacity"
-                >
-                  {item.product?.images?.[0]?.url ? (
-                    <img src={item.product.images[0].url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-xl">📦</span>
-                    </div>
-                  )}
-                </button>
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <p className="text-[14px] font-semibold text-gray-900 truncate">{item.product?.name || 'Product'}</p>
-                  {item.variant?.label && (
-                    <p className="text-[12px] text-gray-500">{item.variant.label}</p>
-                  )}
-                  {item.note && (
-                    <p className="text-[12px] italic text-gray-400 mt-0.5">"{item.note}"</p>
-                  )}
-                  <p className="text-[13px] font-bold text-[#128C7E] mt-1">
-                    ₹{(Number(price) * item.quantity).toLocaleString('en-IN')}
-                    <span className="text-[12px] font-normal text-gray-400 ml-1">×{item.quantity}</span>
-                  </p>
-                </div>
-                {/* Individual Add to Cart */}
-                {!isExpired && (
-                  <button
-                    onClick={() => setSelectedProduct(item.product)}
-                    className="self-center px-3 py-2 rounded-xl bg-[#128C7E]/8 text-[#128C7E] text-[12px] font-semibold active:bg-[#128C7E]/20 transition-colors shrink-0"
-                  >
-                    View
-                  </button>
-                )}
-              </div>
-            )
-          })}
+                product={item.product}
+                cart={cart}
+                businessId={businessId!}
+                isLast={i === items.length - 1}
+              />
+            ))}
+          </div>
           {/* Total row */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <span className="text-[14px] font-bold text-gray-700">Total</span>
+            <span className="text-[14px] font-bold text-gray-700">Recommended Total</span>
             <span className="text-[16px] font-bold text-[#128C7E]">₹{subtotal.toLocaleString('en-IN')}</span>
           </div>
         </div>
@@ -265,16 +241,13 @@ export default function SharedCartPage() {
           )}
         </div>
       )}
-    </div>
 
-      {/* Product Drawer */}
-      {selectedProduct && (data.business?.id || data.businessId) && (
-        <ProductDrawer
-          product={selectedProduct}
-          businessId={data.business?.id || data.businessId}
-          onClose={() => setSelectedProduct(null)}
-        />
-      )}
-    </>
+      <style>{`
+        @keyframes collapsible-down { from { height: 0; } to { height: var(--radix-collapsible-content-height); } }
+        @keyframes collapsible-up { from { height: var(--radix-collapsible-content-height); } to { height: 0; } }
+        .animate-collapsible-down { animation: collapsible-down 0.25s cubic-bezier(0.87, 0, 0.13, 1); }
+        .animate-collapsible-up { animation: collapsible-up 0.25s cubic-bezier(0.87, 0, 0.13, 1); }
+      `}</style>
+    </div>
   )
 }
