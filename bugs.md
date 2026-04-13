@@ -1,1 +1,5 @@
-for businesse's catalogue there should be a default collection "All Items", all products go in this collection by default (if not added to specific collection specifically.. in that case product will be in both), and i want businness owner to be able to select products from his own. catalogue and send that mini catalogue to his contacts or a new contact, from which that user can explore, add. to. cart and order
+Create Frontend's apk 
+host backend on ssh lonewolf@45.56.120.47.. access vps check everything you need to, 
+there's already a project hosted too.. you have to host this project too bizchat.anyflix.fun
+
+don't compromise security!
